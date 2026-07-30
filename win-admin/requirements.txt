@@ -1,0 +1,5 @@
+PyQt5>=5.15
+requests>=2.31
+opencv-python>=4.8
+pandas>=2.0
+openpyxl>=3.1

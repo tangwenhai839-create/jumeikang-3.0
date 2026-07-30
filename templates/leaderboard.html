@@ -1,0 +1,81 @@
+{% extends "layout.html" %}
+{% block title %}排名大屏 - 体重管理系统{% endblock %}
+
+{% block content %}
+<div class="leaderboard-container">
+    <div class="lb-header">
+        <h1>🏆 排行榜</h1>
+        <div class="lb-controls">
+            <select id="lbPeriod" onchange="loadLeaderboard()" class="lb-select">
+                <option value="week">本周</option>
+                <option value="month">本月</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="lb-grid" id="lbGrid">
+        <div class="lb-loading">加载中...</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadLeaderboard() {
+    const period = document.getElementById('lbPeriod').value;
+    const resp = await fetch('/api/rankings/' + period);
+    const data = await resp.json();
+
+    const grid = document.getElementById('lbGrid');
+    const rankings = data.rankings || [];
+
+    if (rankings.length === 0) {
+        grid.innerHTML = '<div class="lb-empty">暂无数据</div>';
+        return;
+    }
+
+    // 取前三和其余分开渲染
+    const top3 = rankings.slice(0, 3);
+    const rest = rankings.slice(3);
+
+    grid.innerHTML = '';
+
+    // 前三名大卡片
+    const podium = document.createElement('div');
+    podium.className = 'podium';
+    const medals = ['🥇', '🥈', '🥉'];
+    podium.innerHTML = top3.map((r, i) => {
+        const rateStr = r.change_rate <= 0
+            ? '-' + Math.abs(r.change_rate).toFixed(1) + '%'
+            : '+' + r.change_rate.toFixed(1) + '%';
+        return '<div class="podium-card rank-' + (i+1) + '">' +
+            '<div class="podium-medal">' + medals[i] + '</div>' +
+            '<div class="podium-name">' + r.name + '</div>' +
+            '<div class="podium-rate">' + rateStr + '</div>' +
+            '<div class="podium-weight">' + r.first_weight + ' → ' + r.last_weight + ' kg</div>' +
+            '</div>';
+    }).join('');
+    grid.appendChild(podium);
+
+    if (rest.length > 0) {
+        const restList = document.createElement('div');
+        restList.className = 'rest-list';
+        restList.innerHTML = rest.map((r, i) => {
+            return '<div class="rest-item">' +
+                '<span class="rest-rank">' + (i+4) + '</span>' +
+                '<span class="rest-name">' + r.name + '</span>' +
+                '<span class="rest-weight">' + r.first_weight + ' → ' + r.last_weight + '</span>' +
+                '<span class="rest-rate">' + r.change_rate.toFixed(1) + '%</span>' +
+                '</div>';
+        }).join('');
+        grid.appendChild(restList);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadLeaderboard();
+    // 自动刷新
+    setInterval(loadLeaderboard, 30000);
+});
+</script>
+{% endblock %}

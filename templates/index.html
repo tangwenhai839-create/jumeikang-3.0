@@ -1,0 +1,1194 @@
+{% extends "layout.html" %}
+{% block title %}称重 - 体重管理系统{% endblock %}
+
+{% block content %}
+<div class="weigh-container">
+    <!-- 左侧: 摄像头区域 -->
+    <div class="camera-section">
+        <div class="camera-wrapper">
+            <video id="video" autoplay playsinline></video>
+            <canvas id="canvas" style="display:none"></canvas>
+            <div class="camera-overlay" id="cameraOverlay">
+                <div class="face-guide">
+                    <div class="face-oval"></div>
+                    <p class="face-hint" id="faceHint">请将人脸对准摄像头</p>
+                </div>
+            </div>
+            <div class="camera-status" id="cameraStatus">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">等待摄像头...</span>
+            </div>
+            <div class="liveness-status" id="livenessStatus" style="display:none">
+                <span class="liveness-dot" id="livenessDot"></span>
+                <span id="livenessText">活体检测中...</span>
+            </div>
+        </div>
+        <div class="camera-switch-wrapper" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <select id="cameraSelect" class="form-select" onchange="onCameraSelectChange()" style="flex:1;min-width:150px;max-width:300px;padding:6px 10px;font-size:13px;border-radius:6px;border:1px solid #ddd;">
+                <option value="">加载中...</option>
+            </select>
+            <button class="btn btn-secondary camera-switch" id="switchCamera" onclick="switchCamera()">
+                🔄 刷新摄像头
+            </button>
+        </div>
+    </div>
+
+    <!-- 右侧: 信息面板 -->
+    <div class="info-section">
+        <!-- 语音开关 -->
+        <button class="btn btn-secondary voice-toggle" id="voiceToggleBtn" onclick="toggleVoice()">
+            🔊 语音已开
+        </button>
+
+        <!-- 识别结果 -->
+        <div class="card" id="recognizedCard" style="display:none">
+            <div class="card-header">
+                <h3>✅ 已识别</h3>
+            </div>
+            <div class="card-body text-center">
+                <div class="avatar-large" id="avatarDisplay">👤</div>
+                <h2 class="user-name" id="userName">--</h2>
+                <div class="user-info">
+                    <span>初始体重: <strong id="initWeight">--</strong> 斤</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 未识别 -->
+        <div class="card" id="unrecognizedCard">
+            <div class="card-header">
+                <h3>⏳ 等待识别</h3>
+            </div>
+            <div class="card-body text-center">
+                <div class="avatar-large">👤</div>
+                <p class="text-muted">请面对摄像头</p>
+            </div>
+        </div>
+
+        <!-- 电子秤称重 -->
+        <div class="card" id="weighCard">
+            <div class="card-header">
+                <h3>⚖️ 电子秤称重</h3>
+            </div>
+            <div class="card-body">
+                <!-- 连接控制区域 -->
+                <div class="scale-control" id="scaleControl">
+                    <div class="scale-baudrate">
+                        <label for="baudRateSelect">波特率:</label>
+                        <select id="baudRateSelect" class="form-select">
+                            <option value="9600" selected>9600</option>
+                            <option value="4800">4800</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" id="connectScaleBtn" onclick="connectScale()">
+                        🔌 连接电子秤
+                    </button>
+                    <button class="btn btn-secondary" id="disconnectScaleBtn" onclick="disconnectScale()" style="display:none">
+                        ❌ 断开连接
+                    </button>
+                    <p class="scale-hint" id="scaleHint">点击连接，选择USB串口电子秤</p>
+                </div>
+
+                <!-- 实时体重显示区域 -->
+                <div class="scale-display" id="scaleDisplay" style="display:none">
+                    <div class="weight-realtime" id="weightRealtime">--.--</div>
+                    <div class="weight-unit-label">斤</div>
+                </div>
+
+                <!-- 稳定性指示器 -->
+                <div class="stability-indicator" id="stabilityIndicator" style="display:none">
+                    <div class="stability-bar">
+                        <div class="stability-progress" id="stabilityProgress"></div>
+                    </div>
+                    <div class="stability-text" id="stabilityText">等待稳定...</div>
+                </div>
+
+                <!-- 手动输入（备用） -->
+                <div class="manual-input-toggle" id="manualToggle">
+                    <button class="btn btn-sm btn-secondary" onclick="toggleManualInput()">
+                        ✏️ 手动输入
+                    </button>
+                </div>
+                <div class="manual-input-area" id="manualInputArea" style="display:none">
+                    <div class="weight-input-group">
+                        <input type="number" id="weightInput" class="weight-input"
+                               step="0.1" min="20" max="600" placeholder="体重 (斤)"
+                               autocomplete="off">
+                        <span class="weight-unit">斤</span>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn btn-primary btn-large" onclick="submitWeight()">
+                            💾 保存
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Demo 模式提示 -->
+        {% if demo_mode %}
+        <div class="demo-banner">
+            ⚠️ Demo 模式 — 人脸识别未启用 (添加 ArcFace SDK 后可开启)
+        </div>
+        {% endif %}
+
+        <!-- 今日已称重 -->
+        <div class="card">
+            <div class="card-header">
+                <h3>📋 今日已称重</h3>
+                <span id="todayCount" class="badge">0 人</span>
+            </div>
+            <div class="card-body">
+                <div id="todayList" class="today-list">
+                    <p class="text-muted">加载中...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let stream = null;
+let currentUserId = null;
+let captureInterval = null;
+let currentCamera = "environment";
+let cameraDevices = [];
+let currentDeviceId = null;
+let lastLivenessFailed = false;
+let lastSpokenState = "";
+let voiceEnabled = true;
+
+// 电子秤相关变量
+let scaleSerial = null;
+let scaleReader = null;
+let scaleBaudRate = 9600;
+let scaleConnected = false;
+let scaleConnecting = false;
+let scaleReadLoopPromise = null;
+let scaleVerifying = false;
+let scaleReadBuffer = "";
+let scaleWeightHistory = [];
+let scaleStableStartTime = null;
+let scaleLastWeight = null;
+let scaleStabilityCheckInterval = null;
+const SCALE_STABLE_THRESHOLD = 0.2;
+const SCALE_VERIFY_DURATION = 1000;  // 1秒触发二次验证
+const SCALE_SAVE_DURATION = 2000;    // 2秒后保存
+const SCALE_HISTORY_SIZE = 5;
+
+// 语音播报工具
+function speak(text, force) {
+    force = force || false;
+    if (!voiceEnabled) return;
+    if (!window.speechSynthesis) {
+        console.warn("[Voice] 浏览器不支持语音合成");
+        return;
+    }
+    const now = Date.now();
+    const key = text;
+    if (!force && lastSpokenState === key && now - lastSpokenTime < 3000) {
+        return;
+    }
+    lastSpokenState = key;
+    lastSpokenTime = now;
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = "zh-CN";
+    utter.rate = 1.0;
+    utter.pitch = 1.0;
+    utter.volume = 1.0;
+    const voices = window.speechSynthesis.getVoices();
+    const zhVoice = voices.find(function(v) {
+        return v.lang.startsWith("zh") || v.name.includes("Chinese") || v.name.includes("中文");
+    });
+    if (zhVoice) utter.voice = zhVoice;
+    window.speechSynthesis.speak(utter);
+}
+
+let lastSpokenTime = 0;
+
+function speakGreeting(name) {
+    // 语音已关闭
+}
+
+function speakWeightSuccess(name, weight) {
+    speak(name + "，体重" + weight + "斤，保存成功！");
+}
+
+function speakOverwrite(name) {
+    // 语音已关闭
+}
+
+function speakScaleConnected() {
+    // 语音已关闭
+}
+
+function speakScaleDisconnected() {
+    // 语音已关闭
+}
+
+function speakWeightStable(weight, userName) {
+    var name = userName || "";
+    speak(name + "，体重" + weight + "斤，录入成功！");
+}
+
+function speakScaleError(msg) {
+    // 语音已关闭
+}
+
+function toggleVoice() {
+    voiceEnabled = !voiceEnabled;
+    const btn = document.getElementById("voiceToggleBtn");
+    if (btn) {
+        btn.textContent = voiceEnabled ? "🔊 语音已开" : "🔇 语音已关";
+        btn.className = voiceEnabled ? "btn btn-secondary voice-on" : "btn btn-secondary voice-off";
+    }
+}
+
+if (window.speechSynthesis) {
+    window.speechSynthesis.getVoices();
+    window.speechSynthesis.onvoiceschanged = function() {
+        window.speechSynthesis.getVoices();
+    };
+}
+
+window.addEventListener("beforeunload", function() {
+    if (stream) {
+        stream.getTracks().forEach(function(t) { t.stop(); });
+        stream = null;
+    }
+    if (captureInterval) {
+        clearInterval(captureInterval);
+        captureInterval = null;
+    }
+    disconnectScale();
+});
+
+// --- 摄像头设备管理（用 deviceId 精确选择，兼容 USB 摄像头）---
+async function enumerateCameras() {
+    try {
+        // 需要先请求一次权限才能拿到 label
+        var devices = await navigator.mediaDevices.enumerateDevices();
+        var videos = devices.filter(function(d) { return d.kind === "videoinput"; });
+        cameraDevices = videos;
+        var sel = document.getElementById("cameraSelect");
+        if (!sel) return videos;
+        sel.innerHTML = "";
+        if (videos.length === 0) {
+            sel.innerHTML = '<option value="">未找到摄像头</option>';
+            return videos;
+        }
+        videos.forEach(function(v, i) {
+            var label = v.label || ("摄像头 " + (i + 1));
+            // 截短过长的标签
+            if (label.length > 30) label = label.substring(0, 30);
+            var opt = document.createElement("option");
+            opt.value = v.deviceId;
+            opt.textContent = label;
+            sel.appendChild(opt);
+        });
+        // 默认选非虚拟摄像头（优先物理 USB 摄像头）
+        var bestIdx = 0;
+        for (var j = 0; j < videos.length; j++) {
+            var lbl = (videos[j].label || "").toLowerCase();
+            // 排除虚拟摄像头
+            if (lbl.indexOf("virtual") === -1 && lbl.indexOf("obs") === -1 && lbl.indexOf("webcast") === -1) {
+                bestIdx = j;
+                break;
+            }
+        }
+        sel.selectedIndex = bestIdx;
+        currentDeviceId = videos[bestIdx] ? videos[bestIdx].deviceId : null;
+        console.log("[Camera] 枚举到", videos.length, "个摄像头，默认选:", videos[bestIdx] ? videos[bestIdx].label : "无");
+        return videos;
+    } catch (e) {
+        console.error("[Camera] 枚举失败:", e);
+        return [];
+    }
+}
+
+function onCameraSelectChange() {
+    var sel = document.getElementById("cameraSelect");
+    if (!sel) return;
+    currentDeviceId = sel.value || null;
+    console.log("[Camera] 用户切换到:", sel.options[sel.selectedIndex].text);
+    startCamera();
+}
+
+async function startCamera(facingMode) {
+    try {
+        if (stream) {
+            stream.getTracks().forEach(function(t) { t.stop(); });
+        }
+        // 如果还没枚举过设备，先枚举
+        if (cameraDevices.length === 0) {
+            await enumerateCameras();
+        }
+        // 优先用下拉框选中的 deviceId
+        var sel = document.getElementById("cameraSelect");
+        if (sel && sel.value) {
+            currentDeviceId = sel.value;
+        }
+        var constraints;
+        if (currentDeviceId) {
+            // 精确指定设备
+            constraints = {
+                video: {
+                    deviceId: { exact: currentDeviceId },
+                    width: { ideal: 640 },
+                    height: { ideal: 480 }
+                }
+            };
+            console.log("[Camera] 使用 deviceId 打开:", currentDeviceId.slice(0, 8));
+        } else {
+            // fallback：用 facingMode
+            facingMode = facingMode || "environment";
+            constraints = {
+                video: {
+                    width: { ideal: 640 },
+                    height: { ideal: 480 },
+                    facingMode: { ideal: facingMode }
+                }
+            };
+            console.log("[Camera] 无 deviceId，使用 facingMode:", facingMode);
+        }
+        try {
+            stream = await navigator.mediaDevices.getUserMedia(constraints);
+        } catch (e1) {
+            // 精确指定失败 → 退化为无约束
+            console.warn("[Camera] 精确打开失败，尝试无约束:", e1.message);
+            stream = await navigator.mediaDevices.getUserMedia({
+                video: { width: { ideal: 640 }, height: { ideal: 480 } }
+            });
+        }
+        const video = document.getElementById("video");
+        video.srcObject = stream;
+        await video.play();
+        setStatus("running", "摄像头已启动");
+        startCapture();
+    } catch (err) {
+        setStatus("error", "摄像头访问失败: " + err.message);
+        console.error("[Camera] 启动失败:", err);
+    }
+}
+
+function switchCamera() {
+    // 刷新摄像头列表
+    enumerateCameras().then(function() {
+        startCamera();
+    });
+}
+
+function setStatus(state, text) {
+    const dot = document.getElementById("statusDot");
+    const statusText = document.getElementById("statusText");
+    dot.className = "status-dot " + state;
+    statusText.textContent = text;
+}
+
+function setLivenessStatus(state, text) {
+    const box = document.getElementById("livenessStatus");
+    const dot = document.getElementById("livenessDot");
+    const txt = document.getElementById("livenessText");
+    box.style.display = "flex";
+    dot.className = "liveness-dot " + state;
+    txt.textContent = text;
+}
+
+function hideLivenessStatus() {
+    document.getElementById("livenessStatus").style.display = "none";
+}
+
+function startCapture() {
+    if (captureInterval) clearInterval(captureInterval);
+    captureInterval = setInterval(captureAndRecognize, 1500);
+}
+
+async function captureAndRecognize() {
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("canvas");
+    if (!video || !video.videoWidth) return;
+    // 图片压缩：640x480 + JPEG 0.6，减少传输量
+    canvas.width = 640;
+    canvas.height = 480;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(video, 0, 0, 640, 480);
+    const imageData = canvas.toDataURL("image/jpeg", 0.6);
+
+    // 合并API：一次调用完成检测+活体+识别（后端已合并）
+    const resp = await fetch("/api/recognize", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({image: imageData})
+    }).catch(function() { return null; });
+
+    if (!resp || !resp.ok) return;
+    const result = await resp.json();
+
+    // 活体验证失败
+    if (result.liveness_failed) {
+        setLivenessStatus("fake", "❌ 活体验证失败");
+        lastLivenessFailed = true;
+        if (lastSpokenState !== "liveness_fail2") {
+            lastSpokenState = "liveness_fail2";
+        }
+        return;
+    }
+
+    // 未检测到人脸
+    if (result.face_detected === false) {
+        hideLivenessStatus();
+        lastLivenessFailed = false;
+        if (lastSpokenState !== "no_face") {
+            lastSpokenState = "no_face";
+        }
+        return;
+    }
+
+    // 活体通过
+    if (result.liveness_enabled) {
+        if (result.liveness_failed === false) {
+            setLivenessStatus("live", "✅ 活体通过");
+        }
+    } else {
+        setLivenessStatus("disabled", "活体检测已关闭");
+    }
+
+    if (result.recognized && result.user) {
+        showRecognized(result.user, result.similarity);
+    } else {
+        if (lastSpokenState !== "no_match") {
+            lastSpokenState = "no_match";
+        }
+        if (document.querySelector(".demo-banner")) {
+            const usersResp = await fetch("/api/users");
+            const usersData = await usersResp.json();
+            if (usersData.users && usersData.users.length > 0) {
+                const randUser = usersData.users[Math.floor(Math.random() * usersData.users.length)];
+                showRecognized(randUser, 0.95);
+            }
+        }
+    }
+}
+
+function showRecognized(user, similarity) {
+    currentUserId = user.id;
+    document.getElementById("recognizedCard").style.display = "block";
+    document.getElementById("unrecognizedCard").style.display = "none";
+    document.getElementById("userName").textContent = user.name;
+    document.getElementById("initWeight").textContent = user.initial_weight || "--";
+
+    if (user.face_image) {
+        document.getElementById("avatarDisplay").innerHTML =
+            '<img src="' + user.face_image + '" class="avatar-img" alt="头像">';
+    } else {
+        document.getElementById("avatarDisplay").textContent = "👤";
+    }
+
+    speakGreeting(user.name);
+    // 电子秤已连接且正在读取时，确保读取继续
+    if (scaleConnected) {
+        startScaleReading();
+    }
+    setTimeout(function() {
+        const connectBtn = document.getElementById("connectScaleBtn");
+        if (connectBtn && connectBtn.style.display !== "none") {
+            connectBtn.focus();
+        }
+    }, 500);
+}
+
+function isWebSerialSupported() {
+    return "serial" in navigator;
+}
+
+async function connectScale() {
+    if (!isWebSerialSupported()) {
+        speakScaleError("您的浏览器不支持 Web Serial API，请使用 Chrome 或 Edge 浏览器");
+        alert("您的浏览器不支持 Web Serial API，请使用 Chrome 或 Edge 浏览器，并确保已开启实验性功能。");
+        return;
+    }
+    // 状态锁：防止重复点击触发 open() already in progress
+    if (scaleConnected) {
+        alert("电子秤已连接");
+        return;
+    }
+    if (scaleConnecting) {
+        alert("正在连接中，请稍候...");
+        return;
+    }
+    scaleConnecting = true;
+    var btn = document.getElementById("connectScaleBtn");
+    if (btn) { btn.disabled = true; btn.textContent = "⏳ 连接中..."; }
+    try {
+        scaleBaudRate = parseInt(document.getElementById("baudRateSelect").value) || 9600;
+
+        // 1. 优先获取已授权端口（避免重复弹窗 + 复用之前的授权）
+        var existingPorts = await navigator.serial.getPorts();
+        if (existingPorts.length > 0) {
+            scaleSerial = existingPorts[0];
+            console.log("[Scale] 使用已授权端口");
+        } else {
+            scaleSerial = await navigator.serial.requestPort({ filters: [] });
+            console.log("[Scale] 用户选择了新端口");
+        }
+
+        // 2. 如果端口已打开（状态残留），先关闭；若仍异常则 forget() 彻底重置
+        if (scaleSerial.readable || scaleSerial.writable) {
+            console.log("[Scale] 端口已打开，先关闭...");
+            try { await scaleSerial.close(); } catch (e) {}
+            if (scaleSerial.readable || scaleSerial.writable) {
+                console.log("[Scale] 端口仍异常，调用 forget() 重置");
+                try { await scaleSerial.forget(); } catch (e) {}
+                scaleSerial = await navigator.serial.requestPort({ filters: [] });
+            }
+        }
+
+        // 3. 打开端口（此时端口确保是 closed 状态）
+        try {
+            await scaleSerial.open({
+                baudRate: scaleBaudRate,
+                dataBits: 8,
+                stopBits: 1,
+                parity: "none",
+                flowControl: "none"
+            });
+        } catch (openErr) {
+            // 打开失败时，forget 重置后重新选择端口再试一次
+            console.log("[Scale] 首次打开失败，尝试 forget 重置后重试:", openErr.message);
+            try { await scaleSerial.forget(); } catch (e) {}
+            await new Promise(function(r) { setTimeout(r, 500); });
+            scaleSerial = await navigator.serial.requestPort({ filters: [] });
+            await new Promise(function(r) { setTimeout(r, 300); });
+            await scaleSerial.open({
+                baudRate: scaleBaudRate,
+                dataBits: 8,
+                stopBits: 1,
+                parity: "none",
+                flowControl: "none"
+            });
+            console.log("[Scale] 重试打开成功");
+        }
+        // 关键：断言 DTR 信号，告诉电子秤芯片主机已就绪（兼容 CH340/CP2102）
+        try {
+            await scaleSerial.setSignals({ dataTerminalReady: true });
+            console.log("[Scale] DTR 信号已断言");
+        } catch (sigErr) {
+            console.warn("[Scale] 设置 DTR 信号失败（可能浏览器不支持）:", sigErr.message);
+        }
+        scaleConnected = true;
+        updateScaleUI("connected");
+        speakScaleConnected();
+        console.log("[Scale] 电子秤已连接，波特率：" + scaleBaudRate);
+        if (currentUserId) {
+            startScaleReading();
+        }
+    } catch (err) {
+        console.error("[Scale] 连接失败:", err);
+        if (err.name !== "NotFoundError" && err.name !== "AbortError") {
+            if (err.message && err.message.indexOf("already in progress") !== -1) {
+                speakScaleError("端口正在使用中，请刷新页面重试");
+                alert("连接失败：端口正在使用中。\n\n请刷新页面或拔插USB线后重试。\n\n如仍无法解决，请在控制台执行：\nnavigator.serial.getPorts().then(ports => Promise.all(ports.map(p => p.forget())))");
+            } else if (err.message && err.message.indexOf("Failed to open") !== -1) {
+                speakScaleError("无法打开串口，可能被占用");
+                alert("连接失败：无法打开串口。\n可能原因：端口被占用 / USB线松动 / 驱动问题");
+            } else {
+                speakScaleError("连接失败");
+                alert("连接电子秤失败: " + err.message);
+            }
+        }
+        // 连接失败时彻底清理端口（forget 重置授权，避免下次连接残留状态）
+        if (scaleSerial) {
+            try { await scaleSerial.close(); } catch (e) {}
+            try { await scaleSerial.forget(); } catch (e) {}
+            scaleSerial = null;
+        }
+        scaleConnected = false;
+    } finally {
+        scaleConnecting = false;
+        if (btn) {
+            btn.disabled = false;
+            if (!scaleConnected) {
+                btn.textContent = "🔌 连接电子秤";
+            }
+        }
+    }
+}
+
+async function disconnectScale() {
+    scaleConnected = false;
+    stopScaleReading();
+    // 严格顺序：cancel reader → await readLoop 退出(releaseLock) → close port
+    try {
+        if (scaleReader) {
+            try { await scaleReader.cancel(); } catch (e) {}
+        }
+        // 等待 readScaleLoop 的 finally 执行完毕（releaseLock）
+        if (scaleReadLoopPromise) {
+            try { await scaleReadLoopPromise; } catch (e) {}
+            scaleReadLoopPromise = null;
+        }
+        if (scaleSerial) {
+            try { await scaleSerial.close(); } catch (e) {}
+            // 等待 OS 释放端口句柄（Windows 串口独占模式需要时间）
+            await new Promise(function(r) { setTimeout(r, 300); });
+            scaleSerial = null;
+        }
+    } catch (err) {
+        console.warn("[Scale] 断开连接时出错:", err);
+    }
+    scaleReader = null;
+    scaleReadBuffer = "";
+    scaleWeightHistory = [];
+    scaleStableStartTime = null;
+    scaleLastWeight = null;
+    updateScaleUI("disconnected");
+    speakScaleDisconnected();
+    console.log("[Scale] 电子秤已断开");
+}
+
+function updateScaleUI(state) {
+    const connectBtn = document.getElementById("connectScaleBtn");
+    const disconnectBtn = document.getElementById("disconnectScaleBtn");
+    const hint = document.getElementById("scaleHint");
+    const scaleDisplay = document.getElementById("scaleDisplay");
+    const stabilityIndicator = document.getElementById("stabilityIndicator");
+
+    if (state === "connected") {
+        connectBtn.style.display = "none";
+        disconnectBtn.style.display = "inline-flex";
+        hint.textContent = "电子秤已连接，请站上秤面";
+        hint.className = "scale-hint connected";
+        scaleDisplay.style.display = "block";
+        stabilityIndicator.style.display = "block";
+    } else if (state === "disconnected") {
+        connectBtn.style.display = "inline-flex";
+        disconnectBtn.style.display = "none";
+        hint.textContent = "点击连接，选择USB串口电子秤";
+        hint.className = "scale-hint";
+        scaleDisplay.style.display = "none";
+        stabilityIndicator.style.display = "none";
+        setStabilityStatus("waiting");
+    } else if (state === "saved") {
+        setStabilityStatus("saved");
+        hint.textContent = "已保存，请下秤";
+        hint.className = "scale-hint saved";
+    }
+}
+
+function startScaleReading() {
+    if (!scaleConnected || !scaleSerial) return;
+    // 防止重复读取：如果 readLoop 仍在运行，跳过
+    if (scaleReader) {
+        console.log("[Scale] 已在读取中，跳过");
+        return;
+    }
+    stopScaleReading();
+    scaleReadBuffer = "";
+    scaleWeightHistory = [];
+    scaleStableStartTime = null;
+    setStabilityStatus("waiting");
+    scaleReadLoopPromise = readScaleLoop();
+    scaleStabilityCheckInterval = setInterval(checkStability, 100);
+    console.log("[Scale] 开始读取数据");
+}
+
+function stopScaleReading() {
+    if (scaleStabilityCheckInterval) {
+        clearInterval(scaleStabilityCheckInterval);
+        scaleStabilityCheckInterval = null;
+    }
+}
+
+async function readScaleLoop() {
+    if (!scaleConnected || !scaleSerial) return;
+    // 使用局部变量保存 reader，确保 finally 中 releaseLock 不被外部置 null 干扰
+    var reader;
+    try {
+        reader = scaleSerial.readable.getReader();
+        scaleReader = reader;
+        console.log("[Scale] readLoop 已启动，等待数据...");
+        while (scaleConnected && scaleSerial && reader === scaleReader) {
+            var result = await reader.read();
+            if (result.done) break;
+            if (result.value) {
+                // 直接字节转字符串，避免 UTF-8 解码问题（串口数据通常是 ASCII/二进制）
+                var chunk = "";
+                var bytes = result.value;
+                for (var i = 0; i < bytes.length; i++) {
+                    chunk += String.fromCharCode(bytes[i]);
+                }
+                // 调试日志：打印原始接收数据（hex + ascii）
+                var hexStr = "";
+                for (var j = 0; j < bytes.length && j < 40; j++) {
+                    hexStr += bytes[j].toString(16).padStart(2, "0") + " ";
+                }
+                console.log("[Scale] 原始数据 hex:", hexStr.trim(), "| ascii:", JSON.stringify(chunk.substring(0, 80)));
+                scaleReadBuffer += chunk;
+                processScaleBuffer();
+            }
+        }
+    } catch (err) {
+        if (err.name !== "AbortError" && scaleConnected) {
+            console.error("[Scale] 读取数据错误:", err);
+            speakScaleError("数据读取异常");
+        }
+    } finally {
+        if (reader) {
+            try { reader.releaseLock(); } catch (e) {}
+        }
+        if (scaleReader === reader) {
+            scaleReader = null;
+        }
+        console.log("[Scale] readLoop 已退出");
+    }
+}
+
+function processScaleBuffer() {
+    // 电子秤数据格式: =00.0000=00.0000=00.0000 (用=做帧头，无换行符)
+    // 按 = / \r\n / \r / \n / \x02 / \x03 分割
+    var parts = scaleReadBuffer.split(/[=\r\n\x02\x03]+/);
+    scaleReadBuffer = parts.pop() || "";
+    for (var i = 0; i < parts.length; i++) {
+        var line = parts[i].trim();
+        if (!line) continue;
+        var weight = parseScaleData(line);
+        if (weight !== null && weight >= 0 && weight < 1200) {
+            console.log("[Scale] 解析成功:", JSON.stringify(line), "=>", weight);
+            addWeightReading(weight);
+        } else if (line.length > 0) {
+            // 调试：打印无法解析的行
+            console.log("[Scale] 未解析行:", JSON.stringify(line));
+        }
+    }
+}
+
+function parseScaleData(data) {
+    if (!data) return null;
+    // 模式 1: ST,GS,   70.50,kg (带状态码)
+    var match = data.match(/ST,GS,\s*([+-]?\d+\.?\d*)\s*,?\s*kg/i);
+    if (match) return parseFloat(match[1]);
+    // 模式 2: 70.50 kg / + 70.50 kg
+    match = data.match(/([+-]?\s*\d+\.?\d*)\s*kg\b/i);
+    if (match) return parseFloat(match[1].replace(/\s/g, ""));
+    // 模式 3: 70.50g (克转千克)
+    match = data.match(/(\d+\.?\d*)\s*g\b/i);
+    if (match) {
+        var g = parseFloat(match[1]);
+        return g / 1000;
+    }
+    // 模式 4: 纯小数 4位 (如 00.0000 / 53.0000 / 56.9610) — 本电子秤的实际格式
+    // 此电子秤发送的是字符反转后的数据：56.9610 反转 → 0169.65 = 169.65kg
+    match = data.match(/^(\d+\.\d{4})$/);
+    if (match) {
+        // 将整个字符串反转
+        var reversed = match[1].split("").reverse().join("");
+        var w = parseFloat(reversed);
+        console.log("[Scale] 字符反转:", match[1], "=>", reversed, "=>", w);
+        if (w >= 0 && w < 1200) return w;
+    }
+    // 模式 5: 带前缀的小数 (如 "+70.50" / "= 70.50" / "W:70.50")
+    match = data.match(/(\d+\.\d{1,3})$/);
+    if (match) {
+        var w2 = parseFloat(match[1]);
+        if (w2 >= 0 && w2 < 1200) return w2;
+    }
+    return null;
+}
+
+function addWeightReading(weight) {
+    weight = Math.round(weight * 100) / 100;
+    scaleWeightHistory.push(weight);
+    if (scaleWeightHistory.length > SCALE_HISTORY_SIZE) {
+        scaleWeightHistory.shift();
+    }
+    const displayEl = document.getElementById("weightRealtime");
+    if (displayEl) {
+        displayEl.textContent = weight.toFixed(2);
+    }
+    if (scaleWeightHistory.length >= 3) {
+        checkStability();
+    }
+}
+
+function checkStability() {
+    if (scaleWeightHistory.length < 3) {
+        setStabilityStatus("waiting");
+        return;
+    }
+    let maxVal = scaleWeightHistory[0];
+    let minVal = scaleWeightHistory[0];
+    for (let i = 1; i < scaleWeightHistory.length; i++) {
+        if (scaleWeightHistory[i] > maxVal) maxVal = scaleWeightHistory[i];
+        if (scaleWeightHistory[i] < minVal) minVal = scaleWeightHistory[i];
+    }
+    const range = maxVal - minVal;
+    const currentWeight = scaleWeightHistory[scaleWeightHistory.length - 1];
+
+    if (range <= SCALE_STABLE_THRESHOLD) {
+        if (!scaleStableStartTime) {
+            scaleStableStartTime = Date.now();
+        }
+        const elapsed = Date.now() - scaleStableStartTime;
+        const progress = Math.min(elapsed / SCALE_SAVE_DURATION, 1.0);
+        if (elapsed >= SCALE_VERIFY_DURATION) {
+            // 1秒到，触发验证，读秒继续
+            setStabilityStatus("stable", currentWeight);
+            // 体重低于20，判定异常，不记录，重置整个流程
+            if (currentWeight > 0 && currentWeight < 20) {
+                console.log("[Scale] 体重异常: " + currentWeight + " 斤，低于20，不记录");
+                setStabilityStatus("unstable");
+                var hintEl = document.getElementById("stabilityText");
+                if (hintEl) hintEl.textContent = "⚠ 体重异常(" + currentWeight.toFixed(1) + "斤)，请重新称重";
+                setTimeout(function() { resetWeighIn(); }, 2000);
+                return;
+            }
+            if (currentWeight >= 20 && currentWeight !== scaleLastWeight && currentUserId) {
+                if (!scaleVerifying) {
+                    verifyAndSaveWeight(currentWeight);
+                }
+            }
+        } else {
+            setStabilityStatus("stabilizing", progress);
+        }
+    } else {
+        scaleStableStartTime = null;
+        setStabilityStatus("unstable");
+    }
+}
+
+function setStabilityStatus(status, value) {
+    const progressBar = document.getElementById("stabilityProgress");
+    const statusText = document.getElementById("stabilityText");
+    const indicator = document.getElementById("stabilityIndicator");
+    if (!progressBar || !statusText || !indicator) return;
+    indicator.className = "stability-indicator";
+    progressBar.style.width = "0%";
+    if (status === "waiting") {
+        indicator.classList.add("waiting");
+        progressBar.style.width = "0%";
+        statusText.textContent = "等待站上秤面...";
+    } else if (status === "stabilizing") {
+        indicator.classList.add("stabilizing");
+        const pct = Math.round((value || 0) * 100);
+        progressBar.style.width = pct + "%";
+        statusText.textContent = "稳定中... " + pct + "%";
+    } else if (status === "stable") {
+        indicator.classList.add("stable");
+        progressBar.style.width = "100%";
+        statusText.textContent = "已稳定! " + (value ? value.toFixed(2) : "") + " 斤";
+    } else if (status === "unstable") {
+        indicator.classList.add("unstable");
+        progressBar.style.width = "100%";
+        statusText.textContent = "读数波动中，请站稳...";
+    } else if (status === "saved") {
+        indicator.classList.add("saved");
+        progressBar.style.width = "100%";
+        statusText.textContent = "✅ 已保存";
+    }
+}
+
+// --- 人脸二次确认后保存体重 ---
+async function verifyAndSaveWeight(weight) {
+    if (!currentUserId) return;
+    // 安全检查：体重低于20不记录
+    if (weight < 20) {
+        console.log("[Scale] verifyAndSaveWeight: 体重" + weight + "斤低于20，放弃保存");
+        scaleVerifying = false;
+        resetWeighIn();
+        return;
+    }
+
+    scaleVerifying = true;
+    scaleLastWeight = weight;
+    setStabilityStatus("stable", weight);
+    var hint = document.getElementById("stabilityText");
+    // 语音已关闭
+
+    var maxRetries = 3;
+    var identityMismatchRetries = 1; // 身份不匹配给1次重试机会
+
+    for (var attempt = 1; attempt <= maxRetries; attempt++) {
+        if (hint) hint.textContent = "🔍 正在人脸确认(" + attempt + "/" + maxRetries + ")...";
+        console.log("[Scale] 人脸确认第" + attempt + "次尝试");
+
+        try {
+            // 等1秒再拍照（第2、3次重试时给用户调整时间）
+            if (attempt > 1) {
+                await new Promise(function(r) { setTimeout(r, 1000); });
+            }
+
+            var video = document.getElementById("video");
+            var canvas = document.getElementById("canvas");
+            if (!video || !video.videoWidth) {
+                speakScaleError("摄像头未启动");
+                scaleVerifying = false;
+                return;
+            }
+            // 图片压缩：640x480 + JPEG 0.6
+            canvas.width = 640;
+            canvas.height = 480;
+            var ctx = canvas.getContext("2d");
+            ctx.drawImage(video, 0, 0, 640, 480);
+            var imageData = canvas.toDataURL("image/jpeg", 0.6);
+
+            // 1:1验证：只与当前用户比对，不做活体（登录时已做）
+            var resp = await fetch("/api/verify", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({user_id: currentUserId, image: imageData})
+            });
+
+            if (!resp.ok) {
+                console.warn("[Scale] 验证服务异常，第" + attempt + "次");
+                if (attempt === maxRetries) {
+                    speakScaleError("验证服务异常，请重试");
+                    if (hint) hint.textContent = "❌ 验证服务异常";
+                    setTimeout(function() { scaleVerifying = false; resetScaleAfterSave(); }, 3000);
+                    return;
+                }
+                continue;
+            }
+
+            var result = await resp.json();
+
+            if (result.match) {
+                // 1:1验证通过，等满2秒再保存
+                console.log("[Scale] 1:1验证通过，相似度:", result.similarity);
+                var elapsedSinceStable = Date.now() - scaleStableStartTime;
+                var remaining = SCALE_SAVE_DURATION - elapsedSinceStable;
+                if (remaining > 0) {
+                    console.log("[Scale] 等待读秒完成，还需" + remaining + "ms");
+                    if (hint) hint.textContent = "✅ 验证通过，读秒中...";
+                    await new Promise(function(r) { setTimeout(r, remaining); });
+                }
+                await autoSaveWeight(weight);
+                return;
+            } else if (result.reason === "no_face") {
+                // 未检测到人脸
+                console.log("[Scale] 第" + attempt + "次未检测到人脸");
+                if (attempt < maxRetries) {
+                    continue;
+                }
+                if (hint) hint.textContent = "❌ 未检测到人脸，未保存";
+                setTimeout(function() { scaleVerifying = false; resetScaleAfterSave(); }, 3000);
+                return;
+            } else if (result.reason === "no_enrollment") {
+                // 底库无此用户特征
+                console.log("[Scale] 底库无此用户人脸特征");
+                if (hint) hint.textContent = "❌ 底库无人脸数据，请联系管理员";
+                setTimeout(function() { scaleVerifying = false; resetScaleAfterSave(); }, 3000);
+                return;
+            } else {
+                // 1:1比对不通过（不是同一个人）
+                console.log("[Scale] 1:1验证不匹配，相似度:", result.similarity);
+                if (identityMismatchRetries > 0) {
+                    identityMismatchRetries--;
+                    console.log("[Scale] 身份不匹配，给1次重试机会");
+                    continue;
+                }
+                if (hint) hint.textContent = "❌ 身份不匹配，未保存";
+                setTimeout(function() { scaleVerifying = false; resetScaleAfterSave(); }, 3000);
+                return;
+            }
+        } catch (err) {
+            console.error("[Scale] 第" + attempt + "次确认异常:", err);
+            if (attempt === maxRetries) {
+                speakScaleError("人脸确认异常");
+                if (hint) hint.textContent = "❌ 确认异常";
+                setTimeout(function() { scaleVerifying = false; resetScaleAfterSave(); }, 3000);
+                return;
+            }
+        }
+    }
+}
+
+async function autoSaveWeight(weight) {
+    if (!currentUserId) return;
+    // 安全检查：体重低于20不记录
+    if (weight < 20) {
+        console.log("[Scale] autoSaveWeight: 体重" + weight + "斤低于20，放弃保存");
+        return;
+    }
+    scaleLastWeight = weight;
+    const userName = document.getElementById("userName").textContent;
+    var hint = document.getElementById("stabilityText");
+    try {
+        if (hint) hint.textContent = "⏳ 正在上传体重数据...";
+        const resp = await fetch("/api/weigh", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                user_id: currentUserId,
+                weight: weight
+            })
+        });
+        if (resp.status === 409) {
+            const overwriteResp = await fetch("/api/weigh", {
+                method: "PUT",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    user_id: currentUserId,
+                    weight: weight
+                })
+            });
+            if (overwriteResp.ok) {
+                speakWeightStable(weight, userName);
+                speakOverwrite(userName);
+                updateScaleUI("saved");
+                if (hint) hint.textContent = "✅ " + userName + " 体重 " + weight.toFixed(2) + "斤 上传成功（已更新）";
+                console.log("[Scale] 上传成功(覆盖):", userName, weight, "斤");
+                setTimeout(function() { resetScaleAfterSave(); }, 5000);
+            } else {
+                speakScaleError("保存失败");
+                if (hint) hint.textContent = "❌ 保存失败";
+            }
+            return;
+        }
+        if (resp.ok) {
+            speakWeightStable(weight, userName);
+            updateScaleUI("saved");
+            if (hint) hint.textContent = "✅ " + userName + " 体重 " + weight.toFixed(2) + "斤 上传成功";
+            console.log("[Scale] 上传成功:", userName, weight, "斤");
+            setTimeout(function() { resetScaleAfterSave(); }, 5000);
+        } else {
+            const data = await resp.json();
+            speakScaleError(data.message || "保存失败");
+            if (hint) hint.textContent = "❌ " + (data.message || "保存失败");
+            setTimeout(function() { resetScaleAfterSave(); }, 3000);
+        }
+    } catch (err) {
+        console.error("[Scale] 自动保存失败:", err);
+        speakScaleError("保存失败");
+        if (hint) hint.textContent = "❌ 网络异常，保存失败";
+        setTimeout(function() { resetScaleAfterSave(); }, 3000);
+    }
+}
+
+function resetScaleAfterSave() {
+    scaleWeightHistory = [];
+    scaleStableStartTime = null;
+    scaleLastWeight = null;
+    scaleVerifying = false;
+    const displayEl = document.getElementById("weightRealtime");
+    if (displayEl) displayEl.textContent = "--.--";
+    setStabilityStatus("waiting");
+    updateScaleUI("connected");
+}
+
+function toggleManualInput() {
+    const area = document.getElementById("manualInputArea");
+    if (area) {
+        area.style.display = area.style.display === "none" ? "block" : "none";
+    }
+}
+
+async function submitWeight() {
+    if (!currentUserId) {
+        alert("请先扫描人脸");
+        return;
+    }
+    const weight = parseFloat(document.getElementById("weightInput").value);
+    if (!weight || weight < 20 || weight > 600) {
+        alert("请输入有效体重 (20-600 斤)");
+        return;
+    }
+    const userName = document.getElementById("userName").textContent;
+    const resp = await fetch("/api/weigh", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+            user_id: currentUserId,
+            weight: weight
+        })
+    });
+    if (resp.status === 409) {
+        const data = await resp.json();
+        if (confirm(data.message)) {
+            const overwriteResp = await fetch("/api/weigh", {
+                method: "PUT",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    user_id: currentUserId,
+                    weight: weight
+                })
+            });
+            if (overwriteResp.ok) {
+                speakOverwrite(userName);
+                alert("✅ 保存成功!");
+                resetWeighIn();
+            }
+        } else {
+            // 语音已关闭
+        }
+        return;
+    }
+    if (resp.ok) {
+        speakWeightSuccess(userName, weight);
+        alert("✅ " + userName + " 体重已保存!");
+        resetWeighIn();
+    }
+}
+
+function resetWeighIn() {
+    currentUserId = null;
+    document.getElementById("recognizedCard").style.display = "none";
+    document.getElementById("unrecognizedCard").style.display = "block";
+    // 电子秤卡片保持显示，只重置称重数据
+    document.getElementById("weightInput").value = "";
+    scaleWeightHistory = [];
+    scaleStableStartTime = null;
+    scaleLastWeight = null;
+    const displayEl = document.getElementById("weightRealtime");
+    if (displayEl) displayEl.textContent = "--.--";
+    setStabilityStatus("waiting");
+    loadTodayWeighed();
+}
+
+async function loadTodayWeighed() {
+    try {
+        const resp = await fetch("/api/today");
+        const data = await resp.json();
+        const list = document.getElementById("todayList");
+        const count = document.getElementById("todayCount");
+        if (data.users && data.users.length > 0) {
+            count.textContent = data.users.length + " 人";
+            list.innerHTML = data.users.map(function(u) {
+                return '<div class="today-item">' +
+                    '<span class="today-name">' + u.name + '</span>' +
+                    '<span class="today-weight">' + u.weight + ' 斤</span>' +
+                    '</div>';
+            }).join("");
+        } else {
+            count.textContent = "0 人";
+            list.innerHTML = "<p class=\"text-muted\">今日暂无称重记录</p>";
+        }
+    } catch (e) {}
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+    // 先枚举摄像头列表填充下拉框，再启动摄像头
+    enumerateCameras().then(function() {
+        startCamera();
+    }).catch(function() {
+        startCamera();
+    });
+    loadTodayWeighed();
+    setInterval(loadTodayWeighed, 10000);
+    if (!isWebSerialSupported()) {
+        const hint = document.getElementById("scaleHint");
+        if (hint) {
+            hint.textContent = "当前浏览器不支持 Web Serial API，请使用 Chrome/Edge 或手动输入";
+            hint.className = "scale-hint unsupported";
+        }
+        const connectBtn = document.getElementById("connectScaleBtn");
+        if (connectBtn) {
+            connectBtn.disabled = true;
+            connectBtn.style.opacity = "0.5";
+        }
+    }
+});
+</script>
+{% endblock %}

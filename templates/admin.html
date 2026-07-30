@@ -1,0 +1,682 @@
+{% extends "admin_layout.html" %}
+{% block title %}学员管理 - 体重管理系统{% endblock %}
+
+{% block content %}
+<!-- 顶部持久标签页 -->
+<div class="admin-tabs" style="margin-bottom: 20px;">
+    <a href="#" class="tab active" data-tab="students" onclick="switchTab('students'); return false;">👥 学员管理</a>
+    <a href="#" class="tab" data-tab="coaches" onclick="switchTab('coaches'); return false;">👨‍🏫 教练管理</a>
+</div>
+
+<div class="admin-container" id="studentSection">
+    <div class="page-header">
+        <h2>👥 学员管理</h2>
+        <button class="btn btn-primary" onclick="showAddModal()">+ 添加学员</button>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-wrapper">
+                <table class="ranking-table">
+                    <thead>
+                        <tr>
+                            <th>序号</th>
+                            <th>姓名</th>
+                            <th>责任教练</th>
+                            <th>初始体重</th>
+                            <th>最新体重 (kg)</th>
+                            <th>人脸状态</th>
+                            <th>注册日期</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="userTableBody">
+                        <tr><td colspan="8" class="text-center text-muted">加载中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 添加/编辑学员弹窗 -->
+<div class="modal" id="userModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modalTitle">添加学员</h3>
+            <button class="modal-close" onclick="closeModal('userModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="editUserId">
+            <div class="form-group">
+                <label>姓名 *</label>
+                <input type="text" id="userName" class="form-input" required>
+            </div>
+            <div class="form-group">
+                <label>初始体重 (kg)</label>
+                <input type="number" id="userInitWeight" class="form-input" step="0.1" min="20" max="300">
+            </div>
+            <div class="form-group">
+                <label>身高/cm</label>
+                <input type="text" id="userHeight" class="form-input">
+            </div>
+            <div class="form-group">
+                <label>备注</label>
+                <textarea id="userNote" class="form-input" rows="2"></textarea>
+            </div>
+            <div class="form-group">
+                <label>体测体重 (kg)</label>
+                <input type="number" id="userTiceWeight" class="form-input" step="0.1" min="0" max="500" value="0">
+            </div>
+            <div class="form-group">
+                <label>责任教练</label>
+                <select id="userCoachId" class="form-input">
+                    <option value="0">-- 暂无 --</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>人脸录入</label>
+                <div class="face-enroll">
+                    <video id="enrollVideo" autoplay playsinline></video>
+                    <canvas id="enrollCanvas" style="display:none"></canvas>
+                    <div class="face-enroll-actions">
+                        <button class="btn btn-secondary" onclick="startEnrollCamera()">📷 打开摄像头</button>
+                        <button class="btn btn-warning" onclick="resetEnrollFace()">🔄 重新扫描</button>
+                    </div>
+                    <div id="enrollStatus" class="enroll-status text-muted">点击“打开摄像头”开始自动扫脸录入</div>
+                    <div id="enrollPreview" class="enroll-preview"></div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('userModal')">取消</button>
+            <button class="btn btn-primary" onclick="saveUser()">💾 保存</button>
+        </div>
+    </div>
+</div>
+
+
+<!-- 教练管理模块 -->
+<div class="admin-container" id="coachSection" style="display:none">
+    <div class="page-header">
+        <h2>👨‍🏫 教练管理</h2>
+        <button class="btn btn-primary" onclick="showAddCoachModal()">+ 添加教练</button>
+    </div>
+    <div class="card">
+        <div class="card-body">
+            <div class="table-wrapper">
+                <table class="ranking-table">
+                    <thead>
+                        <tr>
+                            <th>序号</th>
+                            <th>姓名</th>
+                            <th>电话</th>
+                            <th>人脸状态</th>
+                            <th>创建时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="coachTableBody">
+                        <tr><td colspan="5" class="text-center text-muted">加载中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 添加/编辑教练弹窗 -->
+<div class="modal" id="coachModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="coachModalTitle">添加教练</h3>
+            <button class="modal-close" onclick="closeModal('coachModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="editCoachId">
+            <div class="form-group">
+                <label>姓名 *</label>
+                <input type="text" id="coachName" class="form-input" required>
+            </div>
+            <div class="form-group">
+                <label>电话</label>
+                <input type="text" id="coachPhone" class="form-input">
+            </div>
+            <div class="form-group">
+                <label>人脸录入</label>
+                <div class="face-enroll">
+                    <video id="coachEnrollVideo" autoplay playsinline></video>
+                    <canvas id="coachEnrollCanvas" style="display:none"></canvas>
+                    <div class="face-enroll-actions">
+                        <button class="btn btn-secondary" onclick="startCoachEnrollCamera()">📷 打开摄像头</button>
+                        <button class="btn btn-warning" onclick="resetCoachEnrollFace()">🔄 重新扫描</button>
+                    </div>
+                    <div id="coachEnrollStatus" class="enroll-status text-muted">点击“打开摄像头”开始自动扫脸录入</div>
+                    <div id="coachEnrollPreview" class="enroll-preview"></div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('coachModal')">取消</button>
+            <button class="btn btn-primary" onclick="saveCoach()">保存</button>
+        </div>
+    </div>
+</div>{% endblock %}
+
+{% block scripts %}
+<script>
+let enrollStream = null;
+let enrollScanInterval = null;
+let enrollScanConsecutive = 0;
+let capturedFaceImage = null;
+let enrollLivenessPassed = false;
+let coachEnrollStream = null;
+let coachEnrollScanInterval = null;
+let coachEnrollScanConsecutive = 0;
+let capturedCoachFaceImage = null;
+let coachEnrollLivenessPassed = false;
+const ENROLL_SCAN_THRESHOLD = 2;
+
+// 加载学员列表
+async function loadUsers() {
+    const resp = await fetch('/api/users');
+    const data = await resp.json();
+    const tbody = document.getElementById('userTableBody');
+
+    if (!data.users || data.users.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">暂无学员</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = data.users.map((u, i) => {
+        const faceStatus = u.face_image ? '✅ 已录入' : '❌ 未录入';
+        return '<tr>' +
+            '<td>' + (i+1) + '</td>' +
+            '<td><strong>' + u.name + '</strong></td>' +
+            '<td>' + (u.coach_name || '--') + '</td>' +
+            '<td>' + (u.initial_weight || '--') + ' kg</td>' +
+            '<td>' + (u.latest_weight ? u.latest_weight + ' kg' : '--') + '</td>' +
+            '<td>' + faceStatus + '</td>' +
+            '<td>' + (u.created_at || '').slice(0,10) + '</td>' +
+            '<td class="action-cell">' +
+            '<button class="btn btn-sm" onclick="editUser('+u.id+')">✏️</button> ' +
+            '<button class="btn btn-sm btn-danger" onclick="deleteUser('+u.id+')">🗑️</button>' +
+            '</td>' +
+            '</tr>';
+    }).join('');
+}
+
+// 显示添加弹窗
+async function showAddModal() {
+    await ensureCoachesLoaded();
+    capturedFaceImage = null;
+    enrollLivenessPassed = false;
+    enrollScanConsecutive = 0;
+    document.getElementById('modalTitle').textContent = '添加学员';
+    document.getElementById('editUserId').value = '';
+    document.getElementById('userName').value = '';
+    document.getElementById('userInitWeight').value = '';
+    document.getElementById('userTiceWeight').value = '0';
+    populateCoachSelect(0);
+    document.getElementById('userHeight').value = '';
+    document.getElementById('userNote').value = '';
+    document.getElementById('enrollPreview').innerHTML = '';
+    document.getElementById('enrollStatus').innerHTML = '<span class="text-muted">点击“打开摄像头”开始自动扫脸录入</span>';
+    document.getElementById('userModal').style.display = 'flex';
+}
+
+// 编辑学员
+async function editUser(userId) {
+    await ensureCoachesLoaded();
+    const resp = await fetch('/api/users');
+    const data = await resp.json();
+    const user = data.users.find(u => u.id === userId);
+    if (!user) return;
+
+    capturedFaceImage = null;
+    enrollLivenessPassed = false;
+    enrollScanConsecutive = 0;
+    document.getElementById('modalTitle').textContent = '编辑学员';
+    document.getElementById('editUserId').value = user.id;
+    document.getElementById('userName').value = user.name;
+    document.getElementById('userInitWeight').value = user.initial_weight || '';
+    document.getElementById('userTiceWeight').value = user.tice_weight || '';
+    populateCoachSelect(user.coach_id || 0);
+    document.getElementById('userHeight').value = user.phone || '';
+    document.getElementById('userNote').value = user.note || '';
+
+    if (user.face_image) {
+        document.getElementById('enrollPreview').innerHTML =
+            '<img src="' + user.face_image + '" class="preview-img" alt="已录入人脸">' +
+            '<p class="text-muted">已录入人像, 可重新扫描覆盖</p>';
+    }
+
+    document.getElementById('enrollStatus').innerHTML = '<span class="text-muted">点击“打开摄像头”开始自动扫脸录入</span>';
+    document.getElementById('userModal').style.display = 'flex';
+}
+
+// 保存学员
+async function saveUser() {
+    const name = document.getElementById('userName').value.trim();
+    if (!name) {
+        alert('请输入姓名');
+        return;
+    }
+
+    const userId = document.getElementById('editUserId').value;
+    const coachSel = document.getElementById('userCoachId');
+    const body = {
+        name: name,
+        initial_weight: parseFloat(document.getElementById('userInitWeight').value) || 0,
+        tice_weight: parseFloat(document.getElementById('userTiceWeight').value) || 0,
+        coach_id: coachSel ? parseInt(coachSel.value) || 0 : 0,
+        phone: document.getElementById('userHeight').value,
+        note: document.getElementById('userNote').value,
+    };
+    if (capturedFaceImage) {
+        if (!enrollLivenessPassed) {
+            alert('❌ 人脸活体未通过，请使用真实人脸重新扫描');
+            return;
+        }
+        body.face_image = capturedFaceImage;
+    }
+
+    let resp;
+    if (userId) {
+        resp = await fetch('/api/users/' + userId, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(body)
+        });
+    } else {
+        resp = await fetch('/api/users', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(body)
+        });
+    }
+
+    if (resp.ok) {
+        const result = await resp.json();
+        if (result.face_warning) {
+            alert('⚠️ ' + result.face_warning);
+            // 不关闭弹窗，让用户重新拍照
+            return;
+        }
+        closeModal('userModal');
+        loadUsers();
+        stopEnrollCamera();
+        capturedFaceImage = null;
+        enrollLivenessPassed = false;
+    } else {
+        const err = await resp.json();
+        alert('保存失败: ' + (err.error || '未知错误'));
+    }
+}
+
+// 删除学员
+async function deleteUser(userId) {
+    if (!confirm('确定删除该学员? 相关体重记录也会被删除。')) return;
+    await fetch('/api/users/' + userId, {method: 'DELETE'});
+    loadUsers();
+}
+
+// 关闭弹窗
+function closeModal(id) {
+    document.getElementById(id).style.display = 'none';
+    stopEnrollCamera();
+    stopCoachEnrollCamera();
+    enrollScanConsecutive = 0;
+    coachEnrollScanConsecutive = 0;
+    document.getElementById('enrollStatus').innerHTML = '<span class="text-muted">点击“打开摄像头”开始自动扫脸录入</span>';
+    document.getElementById('coachEnrollStatus').innerHTML = '<span class="text-muted">点击“打开摄像头”开始自动扫脸录入</span>';
+}
+
+// 摄像头: 录入人脸
+async function startEnrollCamera() {
+    try {
+        if (enrollStream) stopEnrollCamera();
+        enrollStream = await navigator.mediaDevices.getUserMedia({
+            video: { width: 640, height: 480, facingMode: 'user' }
+        });
+        const video = document.getElementById('enrollVideo');
+        video.srcObject = enrollStream;
+        video.onloadedmetadata = function() {
+            video.play();
+            enrollScanConsecutive = 0;
+            if (enrollScanInterval) clearInterval(enrollScanInterval);
+            enrollScanInterval = setInterval(autoEnrollScan, 800);
+            document.getElementById('enrollStatus').innerHTML = '<span class="text-muted">⏳ 请将人脸对准摄像头...</span>';
+        };
+    } catch (e) {
+        alert('摄像头访问失败: ' + e.message);
+    }
+}
+
+function stopEnrollCamera() {
+    if (enrollScanInterval) {
+        clearInterval(enrollScanInterval);
+        enrollScanInterval = null;
+    }
+    if (enrollStream) {
+        enrollStream.getTracks().forEach(t => t.stop());
+        enrollStream = null;
+    }
+}
+
+function resetEnrollFace() {
+    capturedFaceImage = null;
+    enrollLivenessPassed = false;
+    enrollScanConsecutive = 0;
+    document.getElementById('enrollPreview').innerHTML = '';
+    document.getElementById('enrollStatus').innerHTML = '<span class="text-muted">⏳ 请将人脸对准摄像头...</span>';
+    startEnrollCamera();
+}
+
+async function autoEnrollScan() {
+    const video = document.getElementById('enrollVideo');
+    const canvas = document.getElementById('enrollCanvas');
+    if (!video || !video.videoWidth) return;
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    const imageData = canvas.toDataURL('image/jpeg', 0.85);
+
+    const statusBox = document.getElementById('enrollStatus');
+    try {
+        const resp = await fetch('/api/face/detect', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({image: imageData})
+        });
+        if (!resp.ok) throw new Error('检测失败');
+        const data = await resp.json();
+        const livenessEnabled = data.liveness_enabled;
+        const livenessList = data.liveness || [];
+        const liveInfo = livenessList[0] || null;
+
+        if (data.count === 0) {
+            enrollScanConsecutive = 0;
+            statusBox.innerHTML = '<span class="text-muted">⏳ 请将人脸对准摄像头...</span>';
+            return;
+        }
+
+        if (!livenessEnabled || (liveInfo && liveInfo.is_live)) {
+            enrollScanConsecutive++;
+            statusBox.innerHTML = '<span style="color:#2ecc71">✅ 检测到人脸' + (livenessEnabled ? '且活体通过' : '') + ' (' + enrollScanConsecutive + '/' + ENROLL_SCAN_THRESHOLD + ')</span>';
+            if (enrollScanConsecutive >= ENROLL_SCAN_THRESHOLD) {
+                stopEnrollCamera();
+                capturedFaceImage = imageData;
+                enrollLivenessPassed = true;
+                document.getElementById('enrollPreview').innerHTML =
+                    '<img src="' + capturedFaceImage + '" class="preview-img" alt="已录入人脸">' +
+                    '<p style="color:#2ecc71">✅ 扫脸成功，保存时将录入人脸</p>';
+                statusBox.innerHTML = '<span style="color:#2ecc71">✅ 扫脸完成，可点击保存</span>';
+            }
+        } else {
+            enrollScanConsecutive = 0;
+            statusBox.innerHTML = '<span style="color:#e74c3c">❌ 非活体，请使用真实人脸</span>';
+        }
+    } catch (e) {
+        statusBox.innerHTML = '<span class="text-muted">⏳ 检测中...</span>';
+    }
+}
+
+// 教练人脸摄像头
+async function startCoachEnrollCamera() {
+    try {
+        if (coachEnrollStream) stopCoachEnrollCamera();
+        coachEnrollStream = await navigator.mediaDevices.getUserMedia({
+            video: { width: 640, height: 480, facingMode: 'user' }
+        });
+        const video = document.getElementById('coachEnrollVideo');
+        video.srcObject = coachEnrollStream;
+        video.onloadedmetadata = function() {
+            video.play();
+            coachEnrollScanConsecutive = 0;
+            if (coachEnrollScanInterval) clearInterval(coachEnrollScanInterval);
+            coachEnrollScanInterval = setInterval(autoCoachEnrollScan, 800);
+            document.getElementById('coachEnrollStatus').innerHTML = '<span class="text-muted">⏳ 请将人脸对准摄像头...</span>';
+        };
+    } catch (e) {
+        alert('摄像头访问失败: ' + e.message);
+    }
+}
+
+function stopCoachEnrollCamera() {
+    if (coachEnrollScanInterval) {
+        clearInterval(coachEnrollScanInterval);
+        coachEnrollScanInterval = null;
+    }
+    if (coachEnrollStream) {
+        coachEnrollStream.getTracks().forEach(t => t.stop());
+        coachEnrollStream = null;
+    }
+}
+
+function resetCoachEnrollFace() {
+    capturedCoachFaceImage = null;
+    coachEnrollLivenessPassed = false;
+    coachEnrollScanConsecutive = 0;
+    document.getElementById('coachEnrollPreview').innerHTML = '';
+    document.getElementById('coachEnrollStatus').innerHTML = '<span class="text-muted">⏳ 请将人脸对准摄像头...</span>';
+    startCoachEnrollCamera();
+}
+
+async function autoCoachEnrollScan() {
+    const video = document.getElementById('coachEnrollVideo');
+    const canvas = document.getElementById('coachEnrollCanvas');
+    if (!video || !video.videoWidth) return;
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    const imageData = canvas.toDataURL('image/jpeg', 0.85);
+
+    const statusBox = document.getElementById('coachEnrollStatus');
+    try {
+        const resp = await fetch('/api/face/detect', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({image: imageData})
+        });
+        if (!resp.ok) throw new Error('检测失败');
+        const data = await resp.json();
+        const livenessEnabled = data.liveness_enabled;
+        const livenessList = data.liveness || [];
+        const liveInfo = livenessList[0] || null;
+
+        if (data.count === 0) {
+            coachEnrollScanConsecutive = 0;
+            statusBox.innerHTML = '<span class="text-muted">⏳ 请将人脸对准摄像头...</span>';
+            return;
+        }
+
+        if (!livenessEnabled || (liveInfo && liveInfo.is_live)) {
+            coachEnrollScanConsecutive++;
+            statusBox.innerHTML = '<span style="color:#2ecc71">✅ 检测到人脸' + (livenessEnabled ? '且活体通过' : '') + ' (' + coachEnrollScanConsecutive + '/' + ENROLL_SCAN_THRESHOLD + ')</span>';
+            if (coachEnrollScanConsecutive >= ENROLL_SCAN_THRESHOLD) {
+                stopCoachEnrollCamera();
+                capturedCoachFaceImage = imageData;
+                coachEnrollLivenessPassed = true;
+                document.getElementById('coachEnrollPreview').innerHTML =
+                    '<img src="' + capturedCoachFaceImage + '" class="preview-img" alt="已录入人脸">' +
+                    '<p style="color:#2ecc71">✅ 扫脸成功，保存时将录入人脸</p>';
+                statusBox.innerHTML = '<span style="color:#2ecc71">✅ 扫脸完成，可点击保存</span>';
+            }
+        } else {
+            coachEnrollScanConsecutive = 0;
+            statusBox.innerHTML = '<span style="color:#e74c3c">❌ 非活体，请使用真实人脸</span>';
+        }
+    } catch (e) {
+        statusBox.innerHTML = '<span class="text-muted">⏳ 检测中...</span>';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', async function() {
+    await loadCoaches();
+    loadUsers();
+});
+
+
+// 标签页切换
+function switchTab(tab) {
+    document.getElementById('studentSection').style.display = tab === 'students' ? 'block' : 'none';
+    document.getElementById('coachSection').style.display = tab === 'coaches' ? 'block' : 'none';
+    document.querySelectorAll('.admin-tabs .tab').forEach(function(t) {
+        t.classList.toggle('active', t.getAttribute('data-tab') === tab);
+    });
+    if (tab === 'coaches') loadCoaches();
+    if (tab === 'students') loadUsers();
+}
+
+// 加载教练列表
+var allCoaches = [];
+async function loadCoaches() {
+    const resp = await fetch('/api/coaches');
+    const data = await resp.json();
+    allCoaches = data.coaches || [];
+    populateCoachSelect();
+    const tbody = document.getElementById('coachTableBody');
+    if (!tbody) return;
+    if (!data.coaches || data.coaches.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">暂无教练</td></tr>';
+        return;
+    }
+    for (const c of data.coaches) {
+        const statusResp = await fetch('/api/coaches/' + c.id + '/face/status');
+        c.face_status = await statusResp.json();
+    }
+    tbody.innerHTML = data.coaches.map(function(c, i) {
+        const faceStatus = c.face_status && c.face_status.enrolled ? '✅ 已录入' : '❌ 未录入';
+        return '<tr>' +
+            '<td>' + (i+1) + '</td>' +
+            '<td><strong>' + c.name + '</strong></td>' +
+            '<td>' + (c.phone || '--') + '</td>' +
+            '<td>' + faceStatus + '</td>' +
+            '<td>' + (c.created_at || '').slice(0,10) + '</td>' +
+            '<td class="action-cell">' +
+            '<button class="btn btn-sm" onclick="editCoach(' + c.id + ')">✏️</button> ' +
+            '<button class="btn btn-sm btn-danger" onclick="deleteCoach(' + c.id + ')">🗑️</button>' +
+            '</td>' +
+            '</tr>';
+    }).join('');
+}
+
+function populateCoachSelect(selectedId) {
+    const sel = document.getElementById('userCoachId');
+    if (!sel) return;
+    sel.innerHTML = '<option value="0">暂无</option>' + allCoaches.map(function(c) {
+        return '<option value="' + c.id + '">' + c.name + '</option>';
+    }).join('');
+    if (selectedId !== undefined) {
+        sel.value = String(selectedId || 0);
+    }
+}
+
+async function ensureCoachesLoaded() {
+    if (!allCoaches.length) {
+        await loadCoaches();
+    }
+}
+
+// 显示添加教练弹窗
+function showAddCoachModal() {
+    capturedCoachFaceImage = null;
+    coachEnrollLivenessPassed = false;
+    coachEnrollScanConsecutive = 0;
+    document.getElementById('coachModalTitle').textContent = '添加教练';
+    document.getElementById('editCoachId').value = '';
+    document.getElementById('coachName').value = '';
+    document.getElementById('coachPhone').value = '';
+    document.getElementById('coachEnrollPreview').innerHTML = '';
+    document.getElementById('coachEnrollStatus').innerHTML = '<span class="text-muted">点击“打开摄像头”开始自动扫脸录入</span>';
+    document.getElementById('coachModal').style.display = 'flex';
+}
+
+// 保存教练
+async function saveCoach() {
+    const name = document.getElementById('coachName').value.trim();
+    if (!name) { alert('请输入姓名'); return; }
+    const coachId = document.getElementById('editCoachId').value;
+    const url = coachId ? '/api/coaches/' + coachId : '/api/coaches';
+    const method = coachId ? 'PUT' : 'POST';
+    const resp = await fetch(url, {
+        method: method,
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            name: name,
+            phone: document.getElementById('coachPhone').value
+        })
+    });
+    if (!resp.ok) {
+        const err = await resp.json();
+        alert(err.error || '保存失败');
+        return;
+    }
+    const result = await resp.json();
+    const savedCoachId = coachId || result.coach_id;
+
+    // 保存教练人脸
+    if (capturedCoachFaceImage && savedCoachId) {
+        if (!coachEnrollLivenessPassed) {
+            alert('❌ 教练人脸活体未通过，请使用真实人脸重新扫描');
+            return;
+        }
+        const faceResp = await fetch('/api/coaches/' + savedCoachId + '/face', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({image: capturedCoachFaceImage})
+        });
+        if (!faceResp.ok) {
+            const err = await faceResp.json();
+            alert('教练信息已保存，但人脸录入失败：' + (err.error || '失败'));
+            return;
+        }
+    }
+
+    closeModal('coachModal');
+    stopCoachEnrollCamera();
+    capturedCoachFaceImage = null;
+    coachEnrollLivenessPassed = false;
+    loadCoaches();
+    loadUsers();
+}
+
+// 编辑教练
+async function editCoach(coachId) {
+    capturedCoachFaceImage = null;
+    coachEnrollLivenessPassed = false;
+    coachEnrollScanConsecutive = 0;
+    const resp = await fetch('/api/coaches');
+    const data = await resp.json();
+    const coach = data.coaches.find(function(c) { return c.id === coachId; });
+    if (!coach) return;
+    document.getElementById('coachModalTitle').textContent = '编辑教练';
+    document.getElementById('editCoachId').value = coach.id;
+    document.getElementById('coachName').value = coach.name;
+    document.getElementById('coachPhone').value = coach.phone || '';
+    const statusResp = await fetch('/api/coaches/' + coachId + '/face/status');
+    const status = await statusResp.json();
+    if (status.enrolled && status.face_image) {
+        document.getElementById('coachEnrollPreview').innerHTML =
+            '<img src="' + status.face_image + '" class="preview-img" alt="已录入人脸">' +
+            '<p class="text-muted">已录入人像，可重新扫描覆盖</p>';
+    } else {
+        document.getElementById('coachEnrollPreview').innerHTML = '';
+    }
+    document.getElementById('coachEnrollStatus').innerHTML = '<span class="text-muted">点击“打开摄像头”开始自动扫脸录入</span>';
+    document.getElementById('coachModal').style.display = 'flex';
+}
+
+// 删除教练
+async function deleteCoach(coachId) {
+    if (!confirm('确定删除该教练?')) return;
+    await fetch('/api/coaches/' + coachId, { method: 'DELETE' });
+    loadCoaches();
+    loadUsers();
+}
+
+</script>
+{% endblock %}

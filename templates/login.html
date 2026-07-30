@@ -1,0 +1,335 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>管理员登录 - 体重管理系统</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .login-wrapper {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+            padding: 20px;
+        }
+        .login-box {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+            width: 100%;
+            max-width: 400px;
+            padding: 40px 32px;
+        }
+        .login-brand {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        .login-brand h1 {
+            font-size: 24px;
+            margin: 12px 0 4px;
+            color: #333;
+        }
+        .login-brand p {
+            color: #888;
+            font-size: 14px;
+        }
+        .login-form .form-group {
+            margin-bottom: 18px;
+        }
+        .login-form label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 14px;
+            color: #555;
+        }
+        .login-form input {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 15px;
+            box-sizing: border-box;
+        }
+        .login-form input:focus {
+            outline: none;
+            border-color: #1890ff;
+        }
+        .login-form button {
+            width: 100%;
+            padding: 13px;
+            margin-top: 8px;
+            border: none;
+            border-radius: 8px;
+            background: #1890ff;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .login-form button:hover {
+            background: #40a9ff;
+        }
+        .login-error {
+            color: #e74c3c;
+            font-size: 14px;
+            margin-top: 12px;
+            text-align: center;
+            min-height: 20px;
+        }
+        .login-tip {
+            margin-top: 20px;
+            padding: 12px;
+            background: #f6ffed;
+            border: 1px solid #b7eb8f;
+            border-radius: 8px;
+            color: #52c41a;
+            font-size: 13px;
+            text-align: center;
+        }
+        .login-switch {
+            margin-top: 16px;
+            text-align: center;
+        }
+        .link-btn {
+            background: none;
+            border: none;
+            color: #1890ff;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: underline;
+            padding: 0;
+        }
+        .face-login-box {
+            text-align: center;
+        }
+        .face-login-box video {
+            width: 100%;
+            max-width: 320px;
+            border-radius: 8px;
+            background: #000;
+            margin-bottom: 12px;
+        }
+        .face-status {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 12px;
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #999;
+        }
+        .status-dot.running { background: #52c41a; }
+        .status-dot.error { background: #e74c3c; }
+        .status-dot.success { background: #1890ff; }
+    </style>
+</head>
+<body>
+    <div class="login-wrapper">
+        <div class="login-box">
+            <div class="login-brand">
+                <div style="font-size: 48px;">⚙️</div>
+                <h1>体重管理后台</h1>
+                <p>管理员登录</p>
+            </div>
+            <div id="passwordLogin">
+                <form class="login-form" onsubmit="return doLogin(event)">
+                    <div class="form-group">
+                        <label>账号</label>
+                        <input type="text" id="username" placeholder="请输入管理员账号" autocomplete="username" required>
+                    </div>
+                    <div class="form-group">
+                        <label>密码</label>
+                        <input type="password" id="password" placeholder="请输入密码" autocomplete="current-password" required>
+                    </div>
+                    <button type="submit" id="loginBtn">登录</button>
+                    <div class="login-error" id="errorMsg"></div>
+                </form>
+            </div>
+
+            <div id="faceLogin" style="display:none;">
+                <div class="face-login-box">
+                    <video id="faceVideo" autoplay playsinline></video>
+                    <canvas id="faceCanvas" style="display:none"></canvas>
+                    <div class="face-status">
+                        <span class="status-dot" id="faceStatusDot"></span>
+                        <span id="faceStatusText">准备摄像头...</span>
+                    </div>
+                    <div class="login-error" id="faceErrorMsg"></div>
+                </div>
+            </div>
+
+            <div class="login-switch">
+                <button type="button" class="link-btn" onclick="switchLoginMode()" id="switchBtn">切换到人脸登录</button>
+            </div>
+
+            <div class="login-tip">
+                首次登录默认账号：admin / admin123<br>
+                教练可录入人脸后使用人脸登录，学员人脸不能登录后台
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let faceStream = null;
+        let isFaceMode = false;
+        let faceCaptureInterval = null;
+        let isLoggingIn = false;
+
+        function switchLoginMode() {
+            isFaceMode = !isFaceMode;
+            document.getElementById('passwordLogin').style.display = isFaceMode ? 'none' : 'block';
+            document.getElementById('faceLogin').style.display = isFaceMode ? 'block' : 'none';
+            document.getElementById('switchBtn').textContent = isFaceMode ? '切换到账号密码登录' : '切换到人脸登录';
+            if (isFaceMode) {
+                startFaceCamera();
+            } else {
+                stopFaceCamera();
+            }
+        }
+
+        function setFaceStatus(state, text) {
+            const dot = document.getElementById('faceStatusDot');
+            const statusText = document.getElementById('faceStatusText');
+            dot.className = 'status-dot ' + state;
+            statusText.textContent = text;
+        }
+
+        async function startFaceCamera() {
+            const err = document.getElementById('faceErrorMsg');
+            err.textContent = '';
+            try {
+                if (faceStream) stopFaceCamera();
+                setFaceStatus('running', '正在启动摄像头...');
+                faceStream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: 640, height: 480, facingMode: 'user' }
+                });
+                const video = document.getElementById('faceVideo');
+                video.srcObject = faceStream;
+                await video.play();
+                setFaceStatus('running', '请将人脸对准摄像头，自动识别登录');
+                startFaceScan();
+            } catch (e) {
+                setFaceStatus('error', '摄像头访问失败');
+                err.textContent = '摄像头访问失败: ' + e.message;
+            }
+        }
+
+        function stopFaceCamera() {
+            if (faceCaptureInterval) {
+                clearInterval(faceCaptureInterval);
+                faceCaptureInterval = null;
+            }
+            if (faceStream) {
+                faceStream.getTracks().forEach(t => t.stop());
+                faceStream = null;
+            }
+            setFaceStatus('', '摄像头已关闭');
+        }
+
+        function startFaceScan() {
+            if (faceCaptureInterval) clearInterval(faceCaptureInterval);
+            faceCaptureInterval = setInterval(captureAndRecognize, 1500);
+        }
+
+        async function captureAndRecognize() {
+            if (isLoggingIn) return;
+            const video = document.getElementById('faceVideo');
+            const canvas = document.getElementById('faceCanvas');
+            if (!video || !video.videoWidth) return;
+
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            const image = canvas.toDataURL('image/jpeg', 0.7);
+
+            // 先检测人脸
+            try {
+                const detectResp = await fetch('/api/face/detect', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({image: image})
+                });
+                if (!detectResp.ok) return;
+                const detectResult = await detectResp.json();
+                if (detectResult.count === 0) {
+                    setFaceStatus('running', '未检测到人脸，请对准摄像头');
+                    return;
+                }
+
+                // 活体验证（参考称重端逻辑）
+                const livenessEnabled = detectResult.liveness_enabled;
+                const livenessList = detectResult.liveness || [];
+                const liveInfo = livenessList[0] || null;
+
+                if (livenessEnabled && liveInfo && !liveInfo.is_live) {
+                    setFaceStatus('running', '活体检测未通过，请使用真实人脸');
+                    return;
+                } else if (livenessEnabled && !liveInfo) {
+                    // 活体已开启但未返回结果，继续尝试
+                }
+            } catch (e) { return; }
+            // 尝试登录
+            isLoggingIn = true;
+            setFaceStatus('success', '识别中，请稍候...');
+            try {
+                const resp = await fetch('/api/login/face', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({image: image})
+                });
+                const data = await resp.json();
+                if (resp.ok && data.success) {
+                    setFaceStatus('success', '识别成功，正在登录...');
+                    stopFaceCamera();
+                    window.location.href = '/';
+                } else {
+                    setFaceStatus('running', '未识别到教练人脸');
+                }
+            } catch (e) {
+                setFaceStatus('error', '网络错误');
+            } finally {
+                isLoggingIn = false;
+            }
+        }
+
+        async function doLogin(e) {
+            e.preventDefault();
+            const btn = document.getElementById('loginBtn');
+            const err = document.getElementById('errorMsg');
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+
+            btn.disabled = true;
+            btn.textContent = '登录中...';
+            err.textContent = '';
+
+            try {
+                const resp = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({username, password})
+                });
+                const data = await resp.json();
+                if (resp.ok && data.success) {
+                    window.location.href = '/';
+                } else {
+                    err.textContent = data.error || '登录失败';
+                }
+            } catch (e) {
+                err.textContent = '网络错误，请重试';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '登录';
+            }
+            return false;
+        }
+    </script>
+</body>
+</html>

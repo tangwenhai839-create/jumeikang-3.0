@@ -1,0 +1,174 @@
+{% extends "admin_layout.html" %}
+{% block title %}设置 - 体重管理系统{% endblock %}
+
+{% block content %}
+<div class="settings-container">
+    <div class="page-header">
+        <h2>⚙️ 系统设置</h2>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><h3>ArcFace SDK 配置</h3></div>
+        <div class="card-body">
+            <div class="form-group">
+                <label>APP_ID</label>
+                <input type="text" id="arcfaceAppId" class="form-input" placeholder="输入 ArcFace 授权 APP_ID">
+            </div>
+            <div class="form-group">
+                <label>SDK_KEY</label>
+                <input type="text" id="arcfaceSdkKey" class="form-input" placeholder="输入 ArcFace 授权 SDK_KEY">
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><h3>称重设置</h3></div>
+        <div class="card-body">
+            <div class="form-group">
+                <label>周起始日</label>
+                <select id="weekStartDay" class="form-select">
+                    <option value="0">周一</option>
+                    <option value="6">周日</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>识别阈值 (0.0-1.0, 推荐 0.8)</label>
+                <input type="number" id="recognitionThreshold" class="form-input"
+                       step="0.05" min="0.5" max="0.99" value="0.8">
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="livenessEnabled" checked>
+                    启用人脸活体验证（防止照片/屏幕攻击）
+                </label>
+                <p class="text-muted" style="font-size:12px;margin-top:4px">
+                    需要 ArcFace SDK 支持。关闭后仅做人脸识别，不再判断是否为真实人脸。
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><h3>管理员账号</h3></div>
+        <div class="card-body">
+            <div class="form-group">
+                <label>当前账号</label>
+                <input type="text" id="adminUsername" class="form-input" placeholder="admin">
+            </div>
+            <div class="form-group">
+                <label>旧密码</label>
+                <input type="password" id="oldPassword" class="form-input" placeholder="不修改密码可不填">
+            </div>
+            <div class="form-group">
+                <label>新密码</label>
+                <input type="password" id="newPassword" class="form-input" placeholder="不修改密码可不填">
+            </div>
+            <div class="form-group">
+                <label>确认新密码</label>
+                <input type="password" id="confirmPassword" class="form-input" placeholder="不修改密码可不填">
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><h3>系统信息</h3></div>
+        <div class="card-body">
+            <div id="systemInfo">
+                <p class="text-muted">加载中...</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="btn-group" style="margin-top:20px">
+        <button class="btn btn-primary" onclick="saveSettings()">💾 保存设置</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadSettings() {
+    try {
+        const resp = await fetch('/api/settings');
+        const data = await resp.json();
+        const s = data.settings || {};
+
+        document.getElementById('arcfaceAppId').value = s.arcface_app_id || '';
+        document.getElementById('arcfaceSdkKey').value = s.arcface_sdk_key || '';
+        document.getElementById('weekStartDay').value = s.week_start_day || '0';
+        document.getElementById('recognitionThreshold').value = s.recognition_threshold || '0.8';
+        document.getElementById('livenessEnabled').checked = (s.liveness_enabled !== '0' && s.liveness_enabled !== 'false');
+        document.getElementById('adminUsername').value = s.admin_username || 'admin';
+    } catch (e) {}
+
+    try {
+        const resp = await fetch('/api/system/info');
+        const data = await resp.json();
+        document.getElementById('systemInfo').innerHTML =
+            '<table class="info-table">' +
+            '<tr><td>平台</td><td>' + (data.platform || '--') + '</td></tr>' +
+            '<tr><td>Python</td><td>' + (data.python_version || '--') + '</td></tr>' +
+            '<tr><td>人脸引擎</td><td>' + (data.demo_mode ? '⚠️ Demo 模式' : '✅ ArcFace 引擎') + '</td></tr>' +
+            '<tr><td>数据库</td><td><code>' + (data.db_path || '--') + '</code></td></tr>' +
+            '</table>';
+    } catch (e) {}
+}
+
+async function saveSettings() {
+    const settings = {
+        arcface_app_id: document.getElementById('arcfaceAppId').value.trim(),
+        arcface_sdk_key: document.getElementById('arcfaceSdkKey').value.trim(),
+        week_start_day: document.getElementById('weekStartDay').value,
+        recognition_threshold: document.getElementById('recognitionThreshold').value,
+        liveness_enabled: document.getElementById('livenessEnabled').checked ? '1' : '0',
+        admin_username: document.getElementById('adminUsername').value.trim() || 'admin',
+    };
+
+    const oldPassword = document.getElementById('oldPassword').value;
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+
+    if (newPassword || confirmPassword || oldPassword) {
+        if (!oldPassword || !newPassword) {
+            alert('❌ 请同时填写旧密码和新密码');
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            alert('❌ 两次输入的新密码不一致');
+            return;
+        }
+        const pwdResp = await fetch('/api/change-password', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                old_password: oldPassword,
+                new_password: newPassword,
+                confirm_password: confirmPassword
+            })
+        });
+        if (!pwdResp.ok) {
+            const err = await pwdResp.json();
+            alert('❌ 密码修改失败：' + (err.error || '未知错误'));
+            return;
+        }
+        document.getElementById('oldPassword').value = '';
+        document.getElementById('newPassword').value = '';
+        document.getElementById('confirmPassword').value = '';
+    }
+
+    const resp = await fetch('/api/settings', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({settings: settings})
+    });
+
+    if (resp.ok) {
+        alert('✅ 设置已保存');
+    } else {
+        alert('❌ 设置保存失败');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', loadSettings);
+</script>
+{% endblock %}

@@ -1,0 +1,144 @@
+{% extends "layout.html" %}
+{% block title %}看板 - 体重管理系统{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="page-header">
+        <h2>📊 排名看板</h2>
+        <div class="header-controls">
+            <select id="periodSelect" onchange="switchPeriod()" class="form-select">
+                <option value="week">本周</option>
+                <option value="month">本月</option>
+            </select>
+            <input type="date" id="refDate" class="form-input" onchange="loadRankings()">
+            <button class="btn btn-primary" onclick="exportExcel()">
+                📥 导出 Excel
+            </button>
+        </div>
+    </div>
+
+    <!-- 排名统计 -->
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-value" id="statTotal">0</div>
+            <div class="stat-label">参与人数</div>
+        </div>
+        <div class="stat-card best">
+            <div class="stat-value" id="statBest">--</div>
+            <div class="stat-label">最佳掉秤 %</div>
+        </div>
+        <div class="stat-card avg">
+            <div class="stat-value" id="statAvg">--</div>
+            <div class="stat-label">平均掉秤 %</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="statWeighed">0</div>
+            <div class="stat-label">今日已称</div>
+        </div>
+    </div>
+
+    <!-- 排名表格 -->
+    <div class="card">
+        <div class="card-header">
+            <h3 id="periodTitle">本周排名</h3>
+        </div>
+        <div class="card-body">
+            <div class="table-wrapper">
+                <table class="ranking-table" id="rankingTable">
+                    <thead>
+                        <tr>
+                            <th>排名</th>
+                            <th>姓名</th>
+                            <th>期初体重(kg)</th>
+                            <th>期末体重(kg)</th>
+                            <th>掉秤率</th>
+                            <th>趋势</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rankingBody">
+                        <tr><td colspan="6" class="text-center text-muted">加载中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentPeriod = 'week';
+
+function switchPeriod() {
+    currentPeriod = document.getElementById('periodSelect').value;
+    loadRankings();
+}
+
+async function loadRankings() {
+    const refDate = document.getElementById('refDate').value;
+    let url = `/api/rankings/${currentPeriod}`;
+    if (refDate) url += `?ref_date=${refDate}`;
+
+    const resp = await fetch(url);
+    const data = await resp.json();
+
+    const periodLabel = currentPeriod === 'week' ? '本' : '本';
+    const periodName = currentPeriod === 'week' ? '周' : '月';
+
+    document.getElementById('periodTitle').textContent = `本${periodName}排名`;
+
+    const tbody = document.getElementById('rankingBody');
+    const rankings = data.rankings || [];
+
+    if (rankings.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">暂无数据</td></tr>';
+        updateStats({total: 0, best: '--', avg: '--'});
+        return;
+    }
+
+    // 统计
+    const rates = rankings.map(r => r.change_rate);
+    const avgRate = (rates.reduce((a,b) => a+b, 0) / rates.length);
+    updateStats({
+        total: rankings.length,
+        best: rankings[0].change_rate.toFixed(2) + '%',
+        avg: avgRate.toFixed(2) + '%'
+    });
+
+    tbody.innerHTML = rankings.map((r, i) => {
+        const isPositive = r.change_rate < 0; // 负数为掉秤
+        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
+        const rateClass = r.change_rate <= 0 ? 'rate-down' : 'rate-up';
+        const trendIcon = r.change_rate <= 0 ? '📉' : '📈';
+        return '<tr>' +
+            '<td class="rank-cell">' + medal + ' ' + (i+1) + '</td>' +
+            '<td><strong>' + r.name + '</strong></td>' +
+            '<td>' + r.first_weight + ' kg</td>' +
+            '<td>' + r.last_weight + ' kg</td>' +
+            '<td class="' + rateClass + '">' + r.change_rate.toFixed(2) + '%</td>' +
+            '<td>' + trendIcon + '</td>' +
+            '</tr>';
+    }).join('');
+}
+
+function updateStats(stats) {
+    document.getElementById('statTotal').textContent = stats.total;
+    document.getElementById('statBest').textContent = stats.best;
+    document.getElementById('statAvg').textContent = stats.avg;
+}
+
+async function exportExcel() {
+    const refDate = document.getElementById('refDate').value;
+    let url = `/api/rankings/${currentPeriod}/export`;
+    if (refDate) url += `?ref_date=${refDate}`;
+    window.open(url, '_blank');
+}
+
+// 设置默认日期为今天
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('refDate').value = today;
+    loadRankings();
+});
+</script>
+{% endblock %}

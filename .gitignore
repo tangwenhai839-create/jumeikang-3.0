@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+.venv/
+
+# SDK 二进制库 (ArcSoft 商业 SDK, 太大不进 git)
+sdk/linux/
+sdk/win64/
+sdk/__pycache__/
+
+# 数据库 (用户敏感数据)
+db/weight.db
+db/*.db-journal
+db/*.db-wal
+db/*.db-shm
+
+# 备份文件
+*.bak
+*.bak_extra
+*.bak_jin
+*.bak_*
+
+# 运行日志和临时文件
+nohup.out
+*.log
+exports/
+*.tmp
+
+# IDE
+.vscode/
+.idea/

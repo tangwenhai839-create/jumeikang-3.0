@@ -1,0 +1,111 @@
+{% extends "admin_layout.html" %}
+{% block title %}数据导出 - 体重管理系统{% endblock %}
+
+{% block content %}
+<div class="settings-container">
+    <div class="page-header">
+        <h2>📊 数据导出</h2>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><h3>导出全部学员体重记录</h3></div>
+        <div class="card-body">
+            <p style="color:#666;margin-bottom:12px">
+                生成 Excel 工作簿，每个学员一个独立 sheet
+            </p>
+            <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+                <button class="btn btn-primary" onclick="exportAll()" style="min-width:200px;padding:14px 24px;font-size:16px">
+                    📥 导出全部学员
+                </button>
+                <span id="exportStatus" style="color:#999;font-size:13px"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><h3>排名数据导出</h3></div>
+        <div class="card-body">
+            <div class="form-group">
+                <label>周期</label>
+                <select id="exportPeriod" class="form-select" style="max-width:120px">
+                    <option value="week">本周</option>
+                    <option value="month">本月</option>
+                </select>
+                <input type="date" id="exportDate" class="form-input" style="max-width:160px;margin-top:8px">
+                <button class="btn btn-primary" onclick="exportRanking()" style="margin-top:8px">📥 导出排名</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><h3>加练人员导出</h3></div>
+        <div class="card-body">
+            <p style="color:#666;margin-bottom:12px">
+                导出今日需要加练的学员名单，分两类：<br>
+                1. 今日未称体重的人员<br>
+                2. 今日体重掉秤不足0.2斤的学员
+            </p>
+            <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+                <button class="btn btn-primary" onclick="exportExtraTraining()" style="min-width:200px;padding:14px 24px;font-size:16px">
+                    🏃 导出加练人员
+                </button>
+                <span id="extraStatus" style="color:#999;font-size:13px"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><h3>全部学员列表</h3></div>
+        <div class="card-body">
+            <table class="ranking-table">
+                <thead><tr><th>序号</th><th>姓名</th><th>初始体重</th><th>最新体重</th><th>人脸状态</th><th>注册日期</th></tr></thead>
+                <tbody id="allUsersBody"><tr><td colspan="6" class="text-muted text-center">加载中...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('exportDate').value = new Date().toISOString().split('T')[0];
+    loadUsers();
+});
+
+async function loadUsers() {
+    var resp = await fetch('/api/users');
+    var data = await resp.json();
+    var tbody = document.getElementById('allUsersBody');
+    if (!data.users || !data.users.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-muted text-center">暂无学员</td></tr>';
+        document.getElementById('exportStatus').textContent = '(0 名学员)';
+        return;
+    }
+    tbody.innerHTML = data.users.map(function(u,i) {
+        return '<tr><td>'+(i+1)+'</td><td><strong>'+u.name+'</strong></td><td>'+(u.initial_weight||'--')+'</td><td>'+(u.latest_weight ? u.latest_weight+' 斤' : '--')+'</td><td>'+(u.face_image ? '✅' : '❌')+'</td><td>'+(u.created_at||'').slice(0,10)+'</td></tr>';
+    }).join('');
+    document.getElementById('exportStatus').textContent = '(' + data.users.length + ' 名学员)';
+}
+
+function exportAll() {
+    var status = document.getElementById('exportStatus');
+    status.textContent = '⏳ 正在生成...';
+    window.open('/api/export/all', '_blank');
+    setTimeout(function() { status.textContent = '✅ 已导出'; }, 1000);
+}
+
+function exportRanking() {
+    var period = document.getElementById('exportPeriod').value;
+    var date = document.getElementById('exportDate').value;
+    window.open('/api/rankings/' + period + '/export?ref_date=' + date, '_blank');
+}
+
+function exportExtraTraining() {
+    var status = document.getElementById('extraStatus');
+    status.textContent = '⏳ 正在生成...';
+    window.open('/api/export/extra-training', '_blank');
+    setTimeout(function() { status.textContent = '✅ 已导出'; }, 1500);
+}
+</script>
+{% endblock %}

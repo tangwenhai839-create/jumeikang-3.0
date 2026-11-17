@@ -30,6 +30,7 @@ from models import (
     init_db, get_all_users, get_user, add_user, update_user, delete_user,
     save_face_feature, get_face_feature, delete_face_feature, get_all_face_features,
     save_weight, get_user_weights, get_today_weight, get_today_weighed_users,
+    save_evening_weight, get_evening_weight,
     get_rankings, export_ranking_excel,
     get_setting, set_setting,
 )
@@ -70,9 +71,22 @@ def _init_once():
 
 @app.route('/')
 def index():
-    """称重主页"""
+    """早晚称重入口"""
+    return render_template('weigh_mode_select.html')
+
+
+@app.route('/morning')
+def morning_weigh():
+    """早上称重（原称重界面）"""
     return render_template('index.html',
-        demo_mode=face_engine.is_demo_mode())
+        demo_mode=face_engine.is_demo_mode(), weigh_mode='morning')
+
+
+@app.route('/evening')
+def evening_weigh():
+    """晚上称重"""
+    return render_template('index.html',
+        demo_mode=face_engine.is_demo_mode(), weigh_mode='evening')
 
 
 @app.route('/dashboard')
@@ -151,7 +165,7 @@ def api_recognize():
     if result:
         user_id, similarity = result
         user = get_user(user_id)
-        if user:
+        if user and user.get('camp_status', 'active') == 'active':
             return jsonify({
                 'recognized': True,
                 'face_detected': True,
@@ -185,6 +199,9 @@ def api_verify():
         return jsonify({'error': '缺少参数'}), 400
 
     user_id = int(data['user_id'])
+    user = get_user(user_id)
+    if not user or user.get('camp_status', 'active') != 'active':
+        return jsonify({'match': False, 'reason': 'not_active'})
 
     try:
         image_data = base64.b64decode(data['image'].split(',')[-1])
@@ -258,6 +275,9 @@ def api_add_user():
         phone=data.get('phone', ''),
         note=data.get('note', ''),
         tice_weight=float(data.get('tice_weight', 0)),
+        coach_id=int(data.get('coach_id', 0) or 0),
+        enroll_date=data.get('enroll_date'),
+        period_count=int(data.get('period_count', 1) or 1),
     )
 
     # 如果有提供人脸图片, 保存人脸特征
@@ -291,15 +311,20 @@ def api_update_user(user_id):
     if not data:
         return jsonify({'error': '无数据'}), 400
 
-    update_user(
-        user_id,
-        name=data.get('name'),
-        phone=data.get('phone'),
-        initial_weight=data.get('initial_weight'),
-        note=data.get('note'),
-        tice_weight=data.get('tice_weight'),
-        coach_id=data.get('coach_id'),
-    )
+    try:
+        update_user(
+            user_id,
+            name=data.get('name'),
+            phone=data.get('phone'),
+            initial_weight=data.get('initial_weight'),
+            note=data.get('note'),
+            tice_weight=data.get('tice_weight'),
+            coach_id=data.get('coach_id'),
+            enroll_date=data.get('enroll_date'),
+            period_count=data.get('period_count'),
+        )
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
 
     # 更新人脸特征
     face_error = None
@@ -343,7 +368,7 @@ def api_enroll_face(user_id):
         return jsonify({'error': '缺少图片'}), 400
 
     user = get_user(user_id)
-    if not user:
+    if not user or user.get('camp_status', 'active') != 'active':
         return jsonify({'error': '学员不存在'}), 404
 
     try:
@@ -393,6 +418,9 @@ def api_weigh():
     user_id = int(data['user_id'])
     weight_val = float(data['weight'])
     weigh_date = data.get('weigh_date', date.today().isoformat())
+    user = get_user(user_id)
+    if not user or user.get('camp_status', 'active') != 'active':
+        return jsonify({'error': '该学员已出营，不能继续称重'}), 403
 
     # 检查重复
     existing = None
@@ -412,7 +440,7 @@ def api_weigh():
         return jsonify({
             'exists': True,
             'existing_weight': existing['weight'],
-            'message': f'该学员今日已称重 ({existing["weight"]} kg), 是否覆盖?',
+            'message': f'该学员今日已称重 ({existing["weight"]} 斤), 是否覆盖?',
         }), 409
 
     save_weight(user_id, weight_val, weigh_date)
@@ -427,7 +455,53 @@ def api_weigh_overwrite():
         return jsonify({'error': '缺少参数'}), 400
 
     weigh_date = data.get('weigh_date', date.today().isoformat())
-    save_weight(int(data['user_id']), float(data['weight']), weigh_date)
+    user_id = int(data['user_id'])
+    user = get_user(user_id)
+    if not user or user.get('camp_status', 'active') != 'active':
+        return jsonify({'error': '该学员已出营，不能继续称重'}), 403
+    save_weight(user_id, float(data['weight']), weigh_date)
+    return jsonify({'success': True})
+
+
+@app.route('/api/evening-weigh', methods=['POST'])
+def api_evening_weigh():
+    """保存晚上体重；数据不参与现有统计与减重计算。"""
+    data = request.get_json()
+    if not data or 'user_id' not in data or 'weight' not in data:
+        return jsonify({'error': '缺少参数'}), 400
+
+    user_id = int(data['user_id'])
+    weight_val = float(data['weight'])
+    weigh_date = data.get('weigh_date', date.today().isoformat())
+    user = get_user(user_id)
+    if not user or user.get('camp_status', 'active') != 'active':
+        return jsonify({'error': '该学员已出营，不能继续称重'}), 403
+
+    existing = get_evening_weight(user_id, weigh_date)
+    if existing:
+        return jsonify({
+            'exists': True,
+            'existing_weight': existing['weight'],
+            'message': f'该学员今晚已称重 ({existing["weight"]} 斤)，是否覆盖？',
+        }), 409
+
+    save_evening_weight(user_id, weight_val, weigh_date)
+    return jsonify({'success': True})
+
+
+@app.route('/api/evening-weigh', methods=['PUT'])
+def api_evening_weigh_overwrite():
+    """覆盖晚上体重记录。"""
+    data = request.get_json()
+    if not data or 'user_id' not in data or 'weight' not in data:
+        return jsonify({'error': '缺少参数'}), 400
+
+    weigh_date = data.get('weigh_date', date.today().isoformat())
+    user_id = int(data['user_id'])
+    user = get_user(user_id)
+    if not user or user.get('camp_status', 'active') != 'active':
+        return jsonify({'error': '该学员已出营，不能继续称重'}), 403
+    save_evening_weight(user_id, float(data['weight']), weigh_date)
     return jsonify({'success': True})
 
 
@@ -441,6 +515,9 @@ def api_today():
 @app.route('/api/users/<int:user_id>/weights', methods=['GET'])
 def api_user_weights(user_id):
     """获取学员体重历史"""
+    user = get_user(user_id)
+    if not user or user.get('camp_status', 'active') != 'active':
+        return jsonify({'error': '学员不在营'}), 404
     weights = get_user_weights(user_id)
     return jsonify({'weights': weights})
 

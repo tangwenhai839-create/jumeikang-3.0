@@ -1,0 +1,37 @@
+{% extends "layout.html" %}
+{% block title %}选择称重时段 - 体重管理系统{% endblock %}
+
+{% block head %}
+<style>
+.mode-page{max-width:1100px;margin:0 auto;padding:54px 18px 80px}.mode-heading{text-align:center;margin-bottom:34px}.mode-heading .eyebrow{letter-spacing:.22em;color:#d5b768;font-size:13px}.mode-heading h1{margin:10px 0 8px;font-size:clamp(30px,4vw,48px);color:#f6e5b7}.mode-heading p{margin:0;color:#bfb7c6;font-size:16px}.mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}.mode-card{position:relative;isolation:isolate;min-height:350px;padding:36px;border-radius:24px;text-decoration:none;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;transition:transform .22s ease,box-shadow .22s ease}.mode-card:before,.mode-card:after{content:"";position:absolute;inset:0;pointer-events:none}.mode-card:before{z-index:-2}.mode-card:after{z-index:-1}.mode-card>div{position:relative;z-index:1}.mode-card:hover{transform:translateY(-5px)}.mode-card:focus-visible{outline:3px solid #2ba59a;outline-offset:4px}.morning{border:1px solid rgba(223,177,74,.55);box-shadow:0 20px 45px rgba(177,129,35,.16)}.morning:before{background:radial-gradient(circle at 72% 57%,rgba(255,255,255,.98) 0 4%,rgba(255,234,165,.72) 5%,transparent 17%),linear-gradient(155deg,#fffdfa 0%,#fff7e5 46%,#f7d37f 100%)}.morning:after{inset:38% -8% -12%;opacity:.38;background:linear-gradient(165deg,transparent 0 34%,rgba(208,155,57,.35) 35% 51%,rgba(116,83,36,.22) 52% 100%);clip-path:polygon(0 64%,18% 48%,35% 62%,55% 35%,72% 58%,87% 40%,100% 51%,100% 100%,0 100%)}.morning:hover{box-shadow:0 26px 60px rgba(177,129,35,.24)}.evening{border:1px solid rgba(119,129,244,.46);box-shadow:0 20px 48px rgba(29,38,116,.28)}.evening:before{background:radial-gradient(circle at 83% 18%,rgba(255,255,255,.9) 0 1px,transparent 2px),radial-gradient(circle at 65% 29%,rgba(255,255,255,.75) 0 1px,transparent 2px),radial-gradient(circle at 89% 39%,rgba(255,255,255,.7) 0 1.5px,transparent 2.5px),radial-gradient(circle at 54% 14%,rgba(255,255,255,.64) 0 1px,transparent 2px),linear-gradient(150deg,#071d50 0%,#172b74 50%,#4b3f9d 100%)}.evening:after{inset:40% -8% -12%;opacity:.62;background:linear-gradient(170deg,transparent 0 35%,rgba(25,24,74,.72) 36% 52%,rgba(4,18,53,.88) 53% 100%);clip-path:polygon(0 67%,17% 51%,34% 64%,55% 37%,72% 60%,88% 42%,100% 53%,100% 100%,0 100%)}.evening:hover{box-shadow:0 28px 64px rgba(29,38,116,.4)}.mode-icon{font-size:56px;line-height:1}.mode-label{font-size:14px;letter-spacing:.16em;margin-top:8px}.mode-card h2{font-size:38px;line-height:1.16;margin:8px 0 0}.morning .mode-icon{color:#e7a42d;text-shadow:0 0 24px rgba(241,179,58,.34)}.morning .mode-label{color:#93652a}.morning h2{color:#5d3b13}.evening .mode-icon{color:#f3f2ff;text-shadow:0 0 25px rgba(202,197,255,.42)}.evening .mode-label{color:#d4d8ff}.evening h2{color:#fff}.mode-enter{display:flex;justify-content:space-between;align-items:center;min-height:70px;margin-top:28px;padding:0 18px 0 22px;border-radius:18px;font-size:17px;font-weight:700;letter-spacing:.02em}.morning .mode-enter{color:#fff;background:linear-gradient(105deg,#e89d38,#f3c554);box-shadow:0 12px 26px rgba(198,131,34,.24)}.evening .mode-enter{color:#fff;background:linear-gradient(105deg,#3e4fae,#7254db);box-shadow:0 12px 28px rgba(36,31,125,.34)}.mode-arrow{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;border:1px solid currentColor;font-size:22px;background:rgba(255,255,255,.09)}.helper-download{display:flex;align-items:center;justify-content:center;gap:12px;width:max-content;max-width:100%;margin:28px auto 0;padding:13px 20px;border:1px solid rgba(92,196,184,.42);border-radius:14px;color:#dffaf6;background:rgba(21,82,79,.28);text-decoration:none;box-shadow:0 10px 28px rgba(0,0,0,.12);transition:background .2s ease,border-color .2s ease,transform .2s ease}.helper-download:hover{color:#fff;background:rgba(34,121,114,.42);border-color:rgba(112,223,210,.68);transform:translateY(-2px)}.helper-download strong{display:block;font-size:15px}.helper-download small{display:block;margin-top:2px;color:#a9cbc7;font-size:12px}.helper-download-icon{font-size:25px;line-height:1}.mode-note{text-align:center;color:#8f8795;font-size:13px;margin-top:16px}@media(max-width:720px){.mode-page{padding:28px 12px 46px}.mode-heading{margin-bottom:22px}.mode-grid{grid-template-columns:1fr;gap:16px}.mode-card{min-height:300px;padding:26px}.mode-card h2{font-size:31px}.mode-icon{font-size:46px}.mode-enter{min-height:62px;margin-top:24px}.helper-download{width:100%;box-sizing:border-box;margin-top:20px}}
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="mode-page">
+    <header class="mode-heading">
+        <div class="eyebrow">JUMEIKANG WEIGHING</div>
+        <h1>请选择称重时段</h1>
+        <p>进入对应界面后进行人脸识别与称重</p>
+    </header>
+    <div class="mode-grid">
+        <a class="mode-card morning" href="/morning">
+            <div>
+                <div class="mode-icon" aria-hidden="true">☀</div>
+                <div class="mode-label">MORNING</div>
+                <h2>早上称重</h2>
+            </div>
+            <div class="mode-enter"><span>进入早上称重</span><span class="mode-arrow">→</span></div>
+        </a>
+        <a class="mode-card evening" href="/evening">
+            <div>
+                <div class="mode-icon" aria-hidden="true">☾</div>
+                <div class="mode-label">EVENING</div>
+                <h2>晚上称重</h2>
+            </div>
+            <div class="mode-enter"><span>进入晚上称重</span><span class="mode-arrow">→</span></div>
+        </a>
+    </div>
+    <p class="mode-note">当前使用 Edge 串口直连；进入称重页面后选择 COM3。晚上重复称重时可覆盖当天记录。</p>
+</section>
+{% endblock %}

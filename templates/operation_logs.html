@@ -1,0 +1,55 @@
+{% extends "admin_layout.html" %}
+{% block title %}操作日志 - 聚美康管理中心{% endblock %}
+{% block head %}
+<style>
+.log-filters{display:grid;grid-template-columns:1.1fr 1fr 1fr 1.2fr auto;gap:10px;align-items:end}.log-result-ok{color:#18794e}.log-result-fail{color:#b42318}.log-detail{max-width:360px;white-space:normal;line-height:1.5}.log-pager{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:16px}.log-pager-actions{display:flex;gap:8px}@media(max-width:900px){.log-filters{grid-template-columns:1fr 1fr}.log-filters .wide{grid-column:1/-1}}@media(max-width:600px){.log-filters{grid-template-columns:1fr}.log-filters .wide{grid-column:auto}.log-table th:nth-child(5),.log-table td:nth-child(5),.log-table th:nth-child(6),.log-table td:nth-child(6){display:none}}
+</style>
+{% endblock %}
+{% block content %}
+<div class="admin-container">
+    <div class="page-header"><div><h2>教练操作日志</h2><p class="text-muted">按教练、日期或操作内容查询，日志只读且不能在页面删除。</p></div></div>
+    <div class="card">
+        <div class="card-body">
+            <div class="log-filters">
+                <div class="form-group"><label>教练</label><select class="form-select" id="coachFilter"><option value="">全部教练</option></select></div>
+                <div class="form-group"><label>开始日期</label><input class="form-input" type="date" id="dateFrom"></div>
+                <div class="form-group"><label>结束日期</label><input class="form-input" type="date" id="dateTo"></div>
+                <div class="form-group wide"><label>操作关键词</label><input class="form-input" id="actionFilter" placeholder="例如：登录、学员、称重、导出"></div>
+                <button class="btn btn-primary" type="button" onclick="loadLogs(1)">查询</button>
+            </div>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-body">
+            <div class="table-wrapper">
+                <table class="ranking-table log-table">
+                    <thead><tr><th>时间</th><th>教练 / 账号</th><th>操作</th><th>详细内容</th><th>结果</th><th>IP地址</th></tr></thead>
+                    <tbody id="logBody"><tr><td colspan="6" class="text-center text-muted">正在加载...</td></tr></tbody>
+                </table>
+            </div>
+            <div class="log-pager"><span id="logSummary" class="text-muted"></span><div class="log-pager-actions"><button class="btn btn-secondary btn-sm" id="prevBtn" onclick="loadLogs(currentPage-1)">上一页</button><button class="btn btn-secondary btn-sm" id="nextBtn" onclick="loadLogs(currentPage+1)">下一页</button></div></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+let currentPage=1,totalPages=1,coachesLoaded=false;
+function esc(value){return String(value == null ? '' : value).replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];});}
+async function loadLogs(page){
+    page=Math.max(1,page||1);
+    const params=new URLSearchParams({page:String(page),page_size:'50'});
+    const coach=document.getElementById('coachFilter').value,from=document.getElementById('dateFrom').value,to=document.getElementById('dateTo').value,action=document.getElementById('actionFilter').value.trim();
+    if(coach)params.set('coach_id',coach);if(from)params.set('date_from',from);if(to)params.set('date_to',to);if(action)params.set('action',action);
+    const body=document.getElementById('logBody');body.innerHTML='<tr><td colspan="6" class="text-center text-muted">正在加载...</td></tr>';
+    const resp=await fetch('/api/operation-logs?'+params.toString());const data=await resp.json();
+    if(!resp.ok){body.innerHTML='<tr><td colspan="6" class="text-center text-muted">'+esc(data.error||'加载失败')+'</td></tr>';return;}
+    if(!coachesLoaded){document.getElementById('coachFilter').innerHTML='<option value="">全部教练</option>'+data.coaches.map(function(c){return '<option value="'+c.id+'">'+esc(c.name)+'</option>';}).join('');coachesLoaded=true;}
+    currentPage=data.page;totalPages=data.pages;
+    body.innerHTML=data.logs.length?data.logs.map(function(item){const ok=item.status_code>=200&&item.status_code<400;const detail=[item.detail,item.target_id?item.target_type+' #'+item.target_id:''].filter(Boolean).join('；');return '<tr><td>'+esc(item.created_at)+'</td><td><strong>'+esc(item.actor_name||'未知')+'</strong><br><small>'+esc(item.actor_username)+(item.actor_role==='admin'?' · 管理员':' · 教练')+'</small></td><td>'+esc(item.action)+'</td><td class="log-detail">'+esc(detail||item.path)+'</td><td class="'+(ok?'log-result-ok':'log-result-fail')+'">'+(ok?'成功':'失败')+' ('+item.status_code+')</td><td>'+esc(item.ip_address||'--')+'</td></tr>';}).join(''):'<tr><td colspan="6" class="text-center text-muted">没有符合条件的操作记录</td></tr>';
+    document.getElementById('logSummary').textContent='共 '+data.total+' 条，第 '+data.page+' / '+data.pages+' 页';document.getElementById('prevBtn').disabled=currentPage<=1;document.getElementById('nextBtn').disabled=currentPage>=totalPages;
+}
+document.getElementById('actionFilter').addEventListener('keydown',function(e){if(e.key==='Enter')loadLogs(1);});
+document.addEventListener('DOMContentLoaded',function(){loadLogs(1);});
+</script>
+{% endblock %}

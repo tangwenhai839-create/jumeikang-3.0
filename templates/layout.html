@@ -2,24 +2,29 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>{% block title %}体重管理系统{% endblock %}</title>
     <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/luxury-theme.css?v=20260820-mobile1">
+    <link rel="stylesheet" href="/static/css/mobile.css?v=20260820-mobile1">
     {% block head %}{% endblock %}
 </head>
-<body>
+<body class="luxury-theme h-theme user-portal">
     <!-- 导航栏 -->
     <nav class="navbar">
-        <div class="nav-brand">⚖️ 体重管理</div>
+        <div class="nav-brand">
+            <img class="brand-mark brand-logo" src="/static/images/jmk-logo.svg?v=20260820-1" alt="JMK">
+            <span class="brand-copy"><strong>聚美康</strong><small>INTELLIGENT HEALTH</small></span>
+        </div>
         <div class="nav-links">
-            <a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}">
-                📷 称重
+            <a href="/" class="nav-link {% if request.path in ('/', '/morning', '/evening') %}active{% endif %}">
+                <span class="nav-icon" aria-hidden="true">◉</span> 智能称重
             </a>
             <a href="/dashboard" class="nav-link {% if request.path == '/dashboard' %}active{% endif %}">
-                📊 看板
+                <span class="nav-icon" aria-hidden="true">◇</span> 数据看板
             </a>
             <a href="/leaderboard" class="nav-link {% if request.path == '/leaderboard' %}active{% endif %}">
-                🏆 排名
+                <span class="nav-icon" aria-hidden="true">♕</span> 荣誉排名
             </a>
         </div>
         <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('show')">☰</button>

@@ -1,134 +1,31 @@
-# 体重管理系统
+# 聚美康训练营管理系统
 
-人脸识别 + 体重管理的一体化解决方案
+称重模块包括学员称重、出入营、教练账号、早晚称、30 天营期和 Excel 报表。住宿模块包括房间、床位、入住记录和 Excel 导入。两套服务使用各自的 SQLite 数据库，可通过本机 API 联动。
 
-## 系统架构
+| 源码 | 技术 |
+| --- | --- |
+| `app.py`、`admin_app.py`、`models.py`、`excel_template.py` | Python / Flask / SQLite |
+| `lodging/frontend` | TypeScript / React / Ant Design / Vite |
+| `lodging/backend` | TypeScript / NestJS / Prisma / SQLite |
 
-```
-┌── 浏览器 (PC/手机) ──────┐
-│ 称重页 / 看板 / 排名       │ ← HTTP API
-└─────────────────────────┘      ↓
-┌── Linux 云服务器 ──────────┐
-│ Flask + ArcFace + SQLite    │
-└─────────────────────────────┘
-┌── Windows 管理端 (PyQt5) ──┐
-│ 学员管理 / 人脸录入 / 导出   │ ← HTTP API
-└─────────────────────────────┘
-```
+## 本地运行
 
-## 快速开始
+建议使用 Python 3.12 和 Node.js 20 或 22。
 
-### 1. 本地测试 (Windows)
+### 称重
 
-```bash
-start.bat
-```
+在仓库根目录安装依赖：`python -m pip install -r requirements.txt`。启动 `python app.py`，称重端默认监听 `127.0.0.1:5000`。
 
-浏览器打开 http://localhost:5000
+后台启动前，请通过环境变量设置随机的 `ADMIN_SECRET_KEY` 和首次登录密码 `ADMIN_INITIAL_PASSWORD`（至少 12 个字符）。签名密钥可以用 `python -c "import secrets; print(secrets.token_hex(32))"` 生成。然后运行 `python admin_app.py`，默认监听 `127.0.0.1:5001`，管理员用户名默认为 `admin`，可在首次使用前通过 `ADMIN_USERNAME` 配置。首次访问时初始化空数据库及管理员账号。
 
-### 2. 部署到 Linux 服务器
+### 住宿
 
-```bash
-chmod +x start.sh
-./start.sh
-```
+在 `lodging/backend` 创建本地 `.env`，设置 `DATABASE_URL="file:./dev.db"`。依次执行 `npm ci`、`npx prisma db push`、`npm run dev`。API 默认监听 `127.0.0.1:3000`。
 
-浏览器打开 http://服务器IP:5000
+在 `lodging/frontend` 执行 `npm ci` 和 `npm run dev`。访问 `http://localhost:5173`。称重后台默认通过本机 3000 端口调用住宿 API，可设置 `LODGING_API_BASE` 覆盖。
 
-### 3. Windows 管理端
+后台内嵌部署时，可设置前端构建变量 `VITE_BASE_PATH=/accommodation/`、`VITE_API_BASE=/accommodation-api`；由网关同时保护页面和 API。独立住宿 API 没有独立登录，公网部署需要在网关加访问控制。
 
-```bash
-cd win-admin
-python main.py
-```
+## 发布范围
 
-打包为单文件:
-```bash
-cd win-admin
-build.bat
-```
-
-## 功能说明
-
-| 页面 | 功能 | 说明 |
-|---|---|---|
-| `/` 称重页 | 摄像头识别 + 体重录入 | PC/手机双端适配 |
-| `/dashboard` 看板 | 周/月排名、统计 | 支持 Excel 导出 |
-| `/leaderboard` 大屏 | 排行榜投屏 | 自动刷新 |
-| `/admin` 学员管理 | 增删改查、人脸录入 | 支持摄像头拍照录入 |
-| `/settings` 设置 | ArcFace 授权、系统参数 | |
-
-## API 接口
-
-| 方法 | 路径 | 说明 |
-|---|---|---|
-| POST | /api/recognize | 人脸识别 (1:N) |
-| POST | /api/weigh | 保存体重 |
-| PUT | /api/weigh | 覆盖当日体重 |
-| GET | /api/rankings/{week,month} | 排名数据 |
-| GET/POST | /api/users | 学员管理 |
-| GET/POST | /api/settings | 系统设置 |
-
-## 硬件要求
-
-- **服务器**: Linux, 2GB RAM, Python 3.9+
-- **称重区**: 任意带摄像头的设备 (笔记本/手机/PC + USB 摄像头)
-- **电子秤**: 可选, 支持手动输入
-
-## ArcFace SDK 配置
-
-1. 将 SDK 文件放入 `sdk/` 目录:
-   - Windows: `sdk/win64/libarcsoft_face_engine.dll`
-   - Linux: `sdk/linux/libarcsoft_face_engine.so`
-2. 在设置页面填入 APP_ID 和 SDK_KEY
-3. 重启服务生效
-
-> 无 SDK 时自动启用 Demo 模式, 所有功能可用 (人脸识别用随机匹配模拟)
-
-## 项目结构
-
-```
-weight-system/
-├── app.py              # Flask 后端
-├── config.py           # 配置
-├── models.py           # 数据库操作
-├── sdk/                # ArcFace SDK
-│   ├── __init__.py
-│   └── arcface_engine.py
-├── templates/          # HTML 页面
-├── static/             # CSS/JS
-├── win-admin/          # Windows 管理端
-│   └── main.py         # PyQt5 程序
-├── start.sh            # Linux 部署
-├── start.bat           # Windows 启动
-└── README.md
-```
-
-## 掉秤率计算
-
-```
-掉秤率 = (期末体重 - 期初体重) / 期初体重 × 100%
-```
-
-负数 = 体重减少 (掉秤), 正数 = 体重增加
-排名按掉秤率从高到低 (掉秤越多排名越前)
-
-## 人脸活体验证
-
-系统已集成 **ArcFace RGB 单目活体检测**（SDK V3.0 的 `ASF_LIVENESS`），可在设置中开启或关闭：
-
-| 特性 | 说明 |
-|------|------|
-| 检测类型 | 单目 RGB 活体（非动作活体） |
-| 防护目标 | 防止照片、屏幕、视频等非真实人脸攻击 |
-| 开关位置 | 设置页 → "启用人脸活体验证" |
-| 默认状态 | 开启 |
-| 生效范围 | 称重识别、学员录入、教练录入、Windows 管理端 |
-
-> 关闭活体后，系统仅做 1:N 人脸识别，不再判断是否为真实人脸。适用于调试或摄像头环境较差的情况。
-
-## 定价参考
-
-- 本系统: 300-500 元 (一次部署, 永久使用)
-- 对比 SaaS: 月费 99-199 元/月 (需联网)
-- 对比一体机: 2000-5000 元/台
+此版本不包含生产数据库、学员数据、人脸样本、服务密钥、生产配置、备份或电子秤助手安装包。人脸识别需要自行取得并配置 ArcFace SDK 及授权文件；安装包相关动作需要另行部署对应资源。

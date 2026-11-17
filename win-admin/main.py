@@ -110,7 +110,7 @@ class StudentDetailDialog(QDialog):
         layout.addWidget(self.info_label)
         self.table = QTableWidget()
         self.table.setColumnCount(3)
-        self.table.setHorizontalHeaderLabels(['日期', '体重 (kg)', '录入时间'])
+        self.table.setHorizontalHeaderLabels(['日期', '体重 (斤)', '录入时间'])
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         layout.addWidget(self.table)
@@ -123,7 +123,7 @@ class StudentDetailDialog(QDialog):
             user = self.api.get('/api/users')
             u = next((s for s in user.get('users', []) if s['id'] == self.user_id), None)
             if u:
-                self.info_label.setText(f'学员: {u["name"]}  |  初始: {u.get("initial_weight","--")} kg  |  最新: {u.get("latest_weight","--")} kg')
+                self.info_label.setText(f'学员: {u["name"]}  |  初始: {u.get("initial_weight","--")} 斤  |  最新: {u.get("latest_weight","--")} 斤')
             weights = self.api.get(f'/api/users/{self.user_id}/weights')
             rows = weights.get('weights', [])
             self.table.setRowCount(len(rows))
@@ -149,7 +149,7 @@ class StudentDialog(QDialog):
 
         self.name_input = QLineEdit()
         self.weight_input = QLineEdit()
-        self.weight_input.setPlaceholderText('初始体重 (kg)')
+        self.weight_input.setPlaceholderText('初始体重 (斤)')
         self.phone_input = QLineEdit()
         self.note_input = QLineEdit()
 
@@ -550,8 +550,8 @@ class MainWindow(QMainWindow):
                 rate = r.get('change_rate', 0)
                 self.rank_table.setItem(i, 0, QTableWidgetItem(str(i+1)))
                 self.rank_table.setItem(i, 1, QTableWidgetItem(r['name']))
-                self.rank_table.setItem(i, 2, QTableWidgetItem(f"{r.get('first_weight','')} kg"))
-                self.rank_table.setItem(i, 3, QTableWidgetItem(f"{r.get('last_weight','')} kg"))
+                self.rank_table.setItem(i, 2, QTableWidgetItem(f"{r.get('first_weight','')} 斤"))
+                self.rank_table.setItem(i, 3, QTableWidgetItem(f"{r.get('last_weight','')} 斤"))
                 self.rank_table.setItem(i, 4, QTableWidgetItem(f"{rate:.2f}%"))
                 self.rank_table.setItem(i, 5, QTableWidgetItem('📉' if rate <= 0 else '📈'))
             self.statusBar().showMessage(f'{len(rankings)} 人')
@@ -581,8 +581,8 @@ class MainWindow(QMainWindow):
                 face_status = '✅ 已录入' if s.get('face_image') else '❌ 未录入'
                 self.student_table.setItem(i, 0, QTableWidgetItem(str(s['id'])))
                 self.student_table.setItem(i, 1, QTableWidgetItem(s['name']))
-                self.student_table.setItem(i, 2, QTableWidgetItem(f"{s.get('initial_weight', '--')} kg"))
-                self.student_table.setItem(i, 3, QTableWidgetItem(f"{s.get('latest_weight', '--')} kg" if s.get('latest_weight') else '--'))
+                self.student_table.setItem(i, 2, QTableWidgetItem(f"{s.get('initial_weight', '--')} 斤"))
+                self.student_table.setItem(i, 3, QTableWidgetItem(f"{s.get('latest_weight', '--')} 斤" if s.get('latest_weight') else '--'))
                 self.student_table.setItem(i, 4, QTableWidgetItem(face_status))
                 self.student_table.setItem(i, 5, QTableWidgetItem((s.get('created_at') or '')[:10]))
 

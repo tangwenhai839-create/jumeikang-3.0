@@ -1,0 +1,72 @@
+// Prisma Schema
+// 默认使用 SQLite 以便开箱即用，无需安装 MySQL。
+// 切换到 MySQL 8.0：将下方 provider 改为 "mysql"，并修改 .env 中的 DATABASE_URL。
+// 注意：SQLite 不支持 @db.VarChar/@db.Text 等数据库特定类型注解，
+// 切换到 MySQL 时这些注解会自动生效（已写在 schema 中以兼容 MySQL）。
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// 房间表
+model Room {
+  id               Int        @id @default(autoincrement())
+  roomNumber       String     @unique @map("room_number")
+  /// 房型: SINGLE(单人间) / DOUBLE(双人间) / TRIPLE(三人间) / QUAD(四人间)
+  roomType         String     @map("room_type")
+  hasAirConditioner Boolean    @default(false) @map("has_air_conditioner")
+  /// 最大入住人数（根据房型自动生成）
+  capacity         Int
+  occupiedCount    Int        @default(0) @map("occupied_count")
+  availableCount   Int        @map("available_count")
+  /// 房间状态: AVAILABLE(空闲) / PARTIALLY(入住中) / FULL(已满)
+  status           String     @default("AVAILABLE")
+  remark           String?
+  createdTime      DateTime   @default(now()) @map("created_time")
+  updatedTime      DateTime   @updatedAt @map("updated_time")
+  residents        Resident[]
+
+  @@map("rooms")
+}
+
+/// 入住人员表（同时承载当前入住与历史记录）
+model Resident {
+  id           Int       @id @default(autoincrement())
+  name         String
+  phone        String
+  isStudent    Boolean   @default(false) @map("is_student")
+  /// 对应减重训练营学员 ID；非训练营入住人员为空
+  campUserId   Int?      @map("camp_user_id")
+  /// 是否整间独住；为 true 时房间不再接受其他入住人员
+  exclusiveUse Boolean  @default(false) @map("exclusive_use")
+  roomId       Int       @map("room_id")
+  bedNumber    Int       @map("bed_number")
+  checkInTime  DateTime  @default(now()) @map("check_in_time")
+  checkOutTime DateTime? @map("check_out_time")
+  /// 状态: CHECKED_IN(在住) / CHECKED_OUT(已退房)
+  status       String    @default("CHECKED_IN")
+  remark       String?
+  room         Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([name])
+  @@index([phone])
+  @@index([roomId])
+  @@index([status])
+  @@index([campUserId, status])
+  @@map("residents")
+}
+
+/// 管理员表
+model User {
+  id       Int    @id @default(autoincrement())
+  username String @unique
+  password String
+  role     String @default("ADMIN")
+
+  @@map("users")
+}

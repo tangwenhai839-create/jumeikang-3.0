@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">JMK 聚美康</title>
+  <desc id="desc">冰川薄荷配色的 JMK 品牌标识</desc>
+  <defs>
+    <linearGradient id="bg" x1="8" y1="5" x2="56" y2="60" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#35A79E"/>
+      <stop offset="0.48" stop-color="#1B7C76"/>
+      <stop offset="1" stop-color="#0E5552"/>
+    </linearGradient>
+    <radialGradient id="light" cx="0" cy="0" r="1" gradientTransform="translate(19 13) rotate(47) scale(44)">
+      <stop stop-color="#C8FFF6" stop-opacity=".32"/>
+      <stop offset="1" stop-color="#C8FFF6" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="shadow" x="-25%" y="-25%" width="150%" height="160%">
+      <feDropShadow dx="0" dy="5" stdDeviation="4" flood-color="#155E59" flood-opacity=".22"/>
+    </filter>
+  </defs>
+  <rect x="3" y="3" width="58" height="58" rx="17" fill="url(#bg)" filter="url(#shadow)"/>
+  <rect x="3.6" y="3.6" width="56.8" height="56.8" rx="16.4" fill="url(#light)" stroke="#E7FFFB" stroke-opacity=".18" stroke-width="1.2"/>
+  <path d="M13 48c9.4 5.1 27.4 4.8 38-3.2" fill="none" stroke="#B9F1E8" stroke-opacity=".24" stroke-linecap="round"/>
+  <text x="32" y="38.4" fill="#F7FFFD" font-family="Georgia, 'Times New Roman', serif" font-size="17" font-weight="700" letter-spacing=".9" text-anchor="middle">JMK</text>
+</svg>

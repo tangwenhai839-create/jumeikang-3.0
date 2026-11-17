@@ -2,20 +2,26 @@
 {% block title %}数据导出 - 体重管理系统{% endblock %}
 
 {% block content %}
-<div class="settings-container">
+<div class="settings-container exports-page">
     <div class="page-header">
-        <h2>📊 数据导出</h2>
+        <h2>数据导出</h2>
+    </div>
+
+    <div id="appDownloadTip" class="card" style="display:none">
+        <div id="appDownloadTipText" class="card-body" style="padding:14px 18px;color:#476e6b;font-size:13px;line-height:1.7">
+            手机 App 下载时会调用系统下载器。点击后请留意通知栏，文件通常保存在手机的“下载 / Download”目录。
+        </div>
     </div>
 
     <div class="card">
-        <div class="card-header"><h3>导出全部学员体重记录</h3></div>
+        <div class="card-header"><h3>导出在营学员多期数据</h3></div>
         <div class="card-body">
-            <p style="color:#666;margin-bottom:12px">
-                生成 Excel 工作簿，每个学员一个独立 sheet
+            <p class="text-muted" style="margin-bottom:12px">
+                仅包含当前在营学员；含“学员总览”“报名期次明细”，并按每名学员实际报名期数动态生成独立称重表
             </p>
             <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
                 <button class="btn btn-primary" onclick="exportAll()" style="min-width:200px;padding:14px 24px;font-size:16px">
-                    📥 导出全部学员
+                    导出在营学员多期数据
                 </button>
                 <span id="exportStatus" style="color:#999;font-size:13px"></span>
             </div>
@@ -32,7 +38,8 @@
                     <option value="month">本月</option>
                 </select>
                 <input type="date" id="exportDate" class="form-input" style="max-width:160px;margin-top:8px">
-                <button class="btn btn-primary" onclick="exportRanking()" style="margin-top:8px">📥 导出排名</button>
+                <button class="btn btn-primary" onclick="exportRanking()" style="margin-top:8px">导出排名</button>
+                <span id="rankingStatus" style="display:block;color:#999;font-size:13px;margin-top:8px"></span>
             </div>
         </div>
     </div>
@@ -40,14 +47,14 @@
     <div class="card">
         <div class="card-header"><h3>加练人员导出</h3></div>
         <div class="card-body">
-            <p style="color:#666;margin-bottom:12px">
+            <p class="text-muted" style="margin-bottom:12px">
                 导出今日需要加练的学员名单，分两类：<br>
                 1. 今日未称体重的人员<br>
                 2. 今日体重掉秤不足0.2斤的学员
             </p>
             <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
                 <button class="btn btn-primary" onclick="exportExtraTraining()" style="min-width:200px;padding:14px 24px;font-size:16px">
-                    🏃 导出加练人员
+                    导出加练人员
                 </button>
                 <span id="extraStatus" style="color:#999;font-size:13px"></span>
             </div>
@@ -55,11 +62,11 @@
     </div>
 
     <div class="card">
-        <div class="card-header"><h3>全部学员列表</h3></div>
+        <div class="card-header"><h3>导出范围预览（在营学员）</h3></div>
         <div class="card-body">
             <table class="ranking-table">
-                <thead><tr><th>序号</th><th>姓名</th><th>初始体重</th><th>最新体重</th><th>人脸状态</th><th>注册日期</th></tr></thead>
-                <tbody id="allUsersBody"><tr><td colspan="6" class="text-muted text-center">加载中...</td></tr></tbody>
+                <thead><tr><th>序号</th><th>姓名</th><th>报名总期数</th><th>已完成</th><th>当前/下一期</th><th>剩余</th><th>状态</th></tr></thead>
+                <tbody id="allUsersBody"><tr><td colspan="7" class="text-muted text-center">加载中...</td></tr></tbody>
             </table>
         </div>
     </div>
@@ -70,42 +77,150 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('exportDate').value = new Date().toISOString().split('T')[0];
+    var tip = document.getElementById('appDownloadTip');
+    var tipText = document.getElementById('appDownloadTipText');
+    if (isIOSDevice()) {
+        tip.style.display = '';
+        tipText.textContent = isStandalonePWA()
+            ? '当前正在使用 iPhone 主屏幕版。报表会交给 iOS 保存；若出现文件预览，请点“分享”后选择“存储到文件”。'
+            : 'iPhone 下载报表后，可在 Safari 下载列表或“文件 > 下载”中查看；若出现预览，请点“分享 > 存储到文件”。';
+    } else if (isHarmonyOS()) {
+        tip.style.display = '';
+        tipText.textContent = isHarmonyBrowser()
+            ? '已识别鸿蒙系统（ArkWeb）。下载后请查看通知中心，文件通常保存在“文件 > 下载”目录。'
+            : '已识别鸿蒙 App（ArkWeb）。点击导出后请在系统下载提示中确认保存，文件可在“文件 > 下载”中查看。';
+    } else if (isEmbeddedApp()) {
+        tip.style.display = '';
+    }
     loadUsers();
 });
 
+function isHarmonyOS() {
+    var ua = navigator.userAgent || '';
+    return /OpenHarmony|HarmonyOS|ArkWeb/i.test(ua);
+}
+
+function isIOSDevice() {
+    var ua = navigator.userAgent || '';
+    return /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
+function isStandalonePWA() {
+    return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+
+function isHarmonyBrowser() {
+    var ua = navigator.userAgent || '';
+    return isHarmonyOS() && /HuaweiBrowser/i.test(ua);
+}
+
+function isEmbeddedApp() {
+    var ua = navigator.userAgent || '';
+    return /;\s*wv\)/i.test(ua) || /\bwv\b/i.test(ua) || (isHarmonyOS() && !isHarmonyBrowser());
+}
+
+function showDownloadStarted(status, url) {
+    if (isIOSDevice()) {
+        status.textContent = '已向 iPhone 提交报表。请查看“文件 > 下载”；若出现预览，请点“分享 > 存储到文件”。';
+    } else if (isHarmonyOS()) {
+        status.textContent = '已向鸿蒙系统提交下载，请查看通知中心或“文件 > 下载”。';
+    } else {
+        status.textContent = isEmbeddedApp()
+            ? '已发起下载，请查看手机通知栏或“下载”目录。'
+            : '已发起下载，请查看浏览器下载记录。';
+    }
+    var retry = document.createElement('a');
+    retry.href = url;
+    retry.target = '_self';
+    if (!isHarmonyOS()) retry.setAttribute('download', '');
+    retry.textContent = ' 没有保存提示？点此重试';
+    retry.style.color = '#1d7771';
+    retry.style.fontWeight = '700';
+    retry.style.marginLeft = '4px';
+    status.appendChild(retry);
+}
+
+async function startDownload(url, statusId) {
+    var status = document.getElementById(statusId);
+    status.textContent = '⏳ 正在生成报表...';
+
+    // iOS 主屏幕版先在当前登录会话中取得附件，再交给 Safari/Web App 保存。
+    if (isIOSDevice()) {
+        try {
+            var response = await fetch(url, {credentials: 'same-origin'});
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            var blob = await response.blob();
+            var disposition = response.headers.get('Content-Disposition') || '';
+            var match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+            var filename = match ? decodeURIComponent(match[1]) : ('聚美康报表-' + Date.now() + '.xlsx');
+            var objectUrl = URL.createObjectURL(blob);
+            var iosLink = document.createElement('a');
+            iosLink.href = objectUrl;
+            iosLink.download = filename;
+            iosLink.target = '_self';
+            iosLink.style.display = 'none';
+            document.body.appendChild(iosLink);
+            iosLink.click();
+            iosLink.remove();
+            setTimeout(function() { URL.revokeObjectURL(objectUrl); }, 60000);
+            showDownloadStarted(status, url);
+        } catch (error) {
+            status.textContent = 'iPhone 下载未启动，正在切换为直接下载...';
+            window.location.assign(url);
+        }
+        return;
+    }
+
+    // 鸿蒙 ArkWeb 由当前 Web 组件接管附件响应，不使用 download 属性或新窗口。
+    if (isHarmonyOS()) {
+        window.location.assign(url);
+        setTimeout(function() { showDownloadStarted(status, url); }, 1200);
+        return;
+    }
+
+    // 必须在当前 WebView 中触发原生附件下载；_blank 新窗口会丢失下载回调。
+    var link = document.createElement('a');
+    link.href = url;
+    link.target = '_self';
+    link.setAttribute('download', '');
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    setTimeout(function() { showDownloadStarted(status, url); }, 1200);
+}
+
 async function loadUsers() {
-    var resp = await fetch('/api/users');
+    var resp = await fetch('/api/users?status=active&include_face=0');
     var data = await resp.json();
     var tbody = document.getElementById('allUsersBody');
     if (!data.users || !data.users.length) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-muted text-center">暂无学员</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-muted text-center">暂无学员</td></tr>';
         document.getElementById('exportStatus').textContent = '(0 名学员)';
         return;
     }
     tbody.innerHTML = data.users.map(function(u,i) {
-        return '<tr><td>'+(i+1)+'</td><td><strong>'+u.name+'</strong></td><td>'+(u.initial_weight||'--')+'</td><td>'+(u.latest_weight ? u.latest_weight+' 斤' : '--')+'</td><td>'+(u.face_image ? '✅' : '❌')+'</td><td>'+(u.created_at||'').slice(0,10)+'</td></tr>';
+        var s=u.period_summary||{};
+        var state={active:'在营',pending:'待下一期入营',exited:'全部完成'}[u.camp_status]||u.camp_status;
+        var focus=s.current_period_number ? ('第'+s.current_period_number+'期 · '+(s.current_period_status_label||'')) : '--';
+        return '<tr><td>'+(i+1)+'</td><td><strong>'+u.name+'</strong></td><td>'+(s.registered_periods||u.period_count||1)+'</td><td>'+(s.completed_periods||0)+'</td><td>'+focus+'</td><td>'+(s.remaining_periods||0)+'</td><td>'+state+'</td></tr>';
     }).join('');
     document.getElementById('exportStatus').textContent = '(' + data.users.length + ' 名学员)';
 }
 
 function exportAll() {
-    var status = document.getElementById('exportStatus');
-    status.textContent = '⏳ 正在生成...';
-    window.open('/api/export/all', '_blank');
-    setTimeout(function() { status.textContent = '✅ 已导出'; }, 1000);
+    startDownload('/api/export/all', 'exportStatus');
 }
 
 function exportRanking() {
     var period = document.getElementById('exportPeriod').value;
     var date = document.getElementById('exportDate').value;
-    window.open('/api/rankings/' + period + '/export?ref_date=' + date, '_blank');
+    startDownload('/api/rankings/' + period + '/export?ref_date=' + encodeURIComponent(date), 'rankingStatus');
 }
 
 function exportExtraTraining() {
-    var status = document.getElementById('extraStatus');
-    status.textContent = '⏳ 正在生成...';
-    window.open('/api/export/extra-training', '_blank');
-    setTimeout(function() { status.textContent = '✅ 已导出'; }, 1500);
+    startDownload('/api/export/extra-training', 'extraStatus');
 }
 </script>
 {% endblock %}

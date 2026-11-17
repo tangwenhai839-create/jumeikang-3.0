@@ -1,0 +1,1058 @@
+{% extends "admin_layout.html" %}
+{% block title %}数据表格 - 体重管理系统{% endblock %}
+
+{% block head %}
+<style>
+/* ─── 工具栏 ─── */
+.dt-toolbar {
+    display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+    margin-bottom: 20px; padding: 16px 20px;
+    background: #fff; border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+}
+.dt-search {
+    flex: 1; min-width: 200px; max-width: 400px;
+    padding: 10px 16px; border: 2px solid #e8e8e8;
+    border-radius: 10px; font-size: 14px;
+    transition: all 0.25s; background: #f8f9fa;
+}
+.dt-search:focus { outline: none; border-color: #e94560; background: #fff; box-shadow: 0 0 0 3px rgba(233,69,96,0.1); }
+.dt-extra-chk {
+    flex: none; display: inline-flex; align-items: center; gap: 6px;
+    padding: 9px 14px; border-radius: 10px; font-size: 13px; font-weight: 600;
+    background: #fff3f5; color: #c62828; border: 1px solid #ffcdd2;
+    cursor: pointer; user-select: none; white-space: nowrap; transition: all .2s;
+}
+.dt-extra-chk:hover { border-color: #f48bb1; }
+.dt-extra-chk input { width: 15px; height: 15px; cursor: pointer; accent-color: #e53935; }
+.dt-extra-tag {
+    display: inline-block; padding: 3px 10px; border-radius: 999px;
+    font-size: 12px; font-weight: 700; color: #fff; background: linear-gradient(135deg,#ff8a65,#e53935);
+    box-shadow: 0 2px 6px rgba(229,57,53,0.35); white-space: nowrap;
+}
+.dt-toolbar select {
+    padding: 10px 16px; border: 2px solid #e8e8e8;
+    border-radius: 10px; font-size: 14px; background: #f8f9fa;
+    cursor: pointer; transition: all 0.25s;
+}
+.dt-toolbar select:focus { outline: none; border-color: #e94560; background: #fff; }
+.dt-category-tabs {
+    display:flex; gap:8px; margin-bottom:14px; padding:5px;
+    width:max-content; max-width:100%; border-radius:12px;
+    background:rgba(255,255,255,.78); border:1px solid #dcebe8;
+}
+.dt-category-tab {
+    min-height:40px; padding:8px 16px; border:0; border-radius:9px;
+    color:#5f7976; background:transparent; cursor:pointer; font-weight:700;
+}
+.dt-category-tab.active { color:#fff; background:linear-gradient(135deg,#258f87,#11635e); box-shadow:0 6px 16px rgba(20,112,105,.18); }
+.dt-category-tab span { margin-left:5px; opacity:.82; }
+.dt-camp-badge { display:inline-flex; margin-left:8px; padding:3px 8px; border-radius:999px; font-size:11px; vertical-align:middle; }
+.dt-camp-badge.active { color:#16725e; background:#ddf5ed; }
+.dt-camp-badge.pending { color:#8a5a12; background:#fff1cf; }
+.dt-camp-badge.planned { color:#8a5a12; background:#fff1cf; }
+.dt-camp-badge.completed { color:#486864; background:#e9f1f0; }
+.dt-camp-badge.exited { color:#6f6863; background:#eee9e5; }
+.dt-period-summary { min-width:1180px; padding:14px 16px; background:#f8fcfb; border-bottom:1px solid #dfece9; }
+.dt-period-summary h5 { margin:0 0 10px; color:#194f4b; font-size:14px; }
+.dt-period-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:9px; }
+.dt-period-item { padding:10px 12px; border:1px solid #dcebe8; border-radius:10px; background:#fff; color:#315f5b; font-size:12px; line-height:1.65; }
+.dt-period-item strong { display:block; color:#173f3c; font-size:13px; }
+.dt-period-item.active { border-color:#64b9ae; background:#effaf7; }
+.dt-period-item.planned { border-color:#ead59c; background:#fffbef; }
+.dt-period-item.completed { border-color:#cbd8d6; background:#f7f9f9; }
+.dt-period-item.cancelled { opacity:.62; }
+
+/* ─── 人脸头像(固定容器,点击前后布局一致) ─── */
+.dt-face-slot {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 36px; height: 36px; border-radius: 50%; flex: none;
+    margin-right: 10px; overflow: hidden;
+    background: linear-gradient(135deg, #3a3a7a 0%, #5a5aa8 100%);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+.dt-face-slot .dt-face-avatar {
+    width: 100%; height: 100%; object-fit: cover;
+    border-radius: 50%; border: none; margin: 0;
+}
+.dt-face-slot .dt-face-ph {
+    font-size: 18px; color: rgba(255,255,255,0.9);
+    line-height: 1;
+}
+
+/* ─── 学员卡片 ─── */
+.dt-student-card {
+    background: #fff; border-radius: 14px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    margin-bottom: 16px; overflow: hidden;
+    transition: box-shadow 0.3s, transform 0.2s;
+    border: 1px solid #f0f0f0;
+}
+.dt-student-card:hover { box-shadow: 0 6px 24px rgba(0,0,0,0.1); }
+.dt-student-header {
+    background: linear-gradient(135deg, #1a1a2e 0%, #2d2d5a 100%);
+    color: #fff; padding: 14px 22px;
+    display: flex; justify-content: space-between; align-items: center;
+    cursor: pointer; transition: background 0.3s;
+}
+.dt-student-header:hover { background: linear-gradient(135deg, #2d2d5a 0%, #3d3d7a 100%); }
+.dt-student-header h3 { font-size: 16px; font-weight: 600; display: flex; align-items: center; }
+.dt-student-info { font-size: 13px; color: #547a76; font-weight: 600; display: flex; gap: 16px; flex-wrap: wrap; }
+.dt-student-info span { white-space: nowrap; }
+.dt-student-body { padding: 0; overflow: hidden; background: #f4faf8; position: relative; }
+.dt-student-detail {
+    display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 0;
+    align-items: start; min-width: 0; background: #eef7f5;
+}
+.dt-profile-panel {
+    position: relative; top: auto; align-self: start; margin: 16px; padding: 20px 18px 22px;
+    background: linear-gradient(165deg, #0f5c58 0%, #0d4d4a 62%, #123f3d 100%);
+    color: #fff; border: 1px solid rgba(255,255,255,.24); border-radius: 18px;
+    display: flex; flex-direction: column; align-items: center;
+    box-shadow: 0 15px 34px rgba(14,79,75,.18);
+    will-change: transform; backface-visibility: hidden;
+}
+.dt-profile-panel::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(circle at 50% 10%, rgba(117,222,205,.18), transparent 34%);
+}
+.dt-profile-photo {
+    position: relative; z-index: 1; width: 178px; height: 220px;
+    border-radius: 16px; overflow: hidden; display: grid; place-items: center;
+    background: linear-gradient(145deg, #d6ece8, #edf8f6);
+    border: 3px solid rgba(255,255,255,.78);
+    box-shadow: 0 12px 30px rgba(0,29,27,.28);
+}
+.dt-profile-photo img { width: 100%; height: 100%; object-fit: cover; object-position: center top; }
+.dt-profile-photo .dt-face-ph { font-size: 44px; color: #438f89; }
+.dt-profile-badge {
+    position: relative; z-index: 1; margin-top: 14px; font-size: 10px;
+    letter-spacing: .18em; color: #a9ddd6; text-transform: uppercase;
+}
+.dt-profile-name { position: relative; z-index: 1; margin-top: 6px; font-size: 22px; font-weight: 750; }
+.dt-profile-metrics {
+    position: relative; z-index: 1; width: 100%; margin-top: 14px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 7px;
+}
+.dt-profile-metric {
+    padding: 8px 6px; text-align: center; border-radius: 9px;
+    background: rgba(255,255,255,.075); border: 1px solid rgba(255,255,255,.09);
+}
+.dt-profile-metric span { display: block; font-size: 10px; color: #a8d5d0; margin-bottom: 3px; }
+.dt-profile-metric b { font-size: 13px; font-variant-numeric: tabular-nums; }
+.dt-records-panel { min-width: 0; overflow-x: auto; background: #fff; }
+.dt-records-head {
+    min-width: 1180px; min-height: 76px; padding: 15px 18px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    border-bottom: 1px solid #dfece9; background: #fff;
+}
+.dt-records-title { display: flex; align-items: center; gap: 12px; }
+.dt-records-title-icon {
+    width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center;
+    color: #fff; background: linear-gradient(145deg,#258f87,#11635e);
+    box-shadow: 0 7px 17px rgba(20,112,105,.22); font-size: 20px;
+}
+.dt-records-title h4 { margin: 0; color: #183f3c; font-size: 18px; }
+.dt-records-title p { margin: 3px 0 0; color: #78918e; font-size: 12px; }
+.dt-records-actions { display: flex; align-items: center; gap: 10px; }
+.dt-records-actions select { min-width: 128px; height: 38px; }
+.dt-profile-edit-label {
+    min-width: 1180px; padding: 9px 16px; color: #52736f; background: #f7fbfa;
+    border-bottom: 1px solid #e4efed; font-size: 11px; font-weight: 700; letter-spacing: .12em;
+}
+.dt-weight-section-label {
+    min-width: 1180px; padding: 12px 16px 9px; color: #1b625d; background: #fff;
+    border-top: 8px solid #eef7f5; font-size: 13px; font-weight: 750;
+}
+.dt-expand-icon {
+    display: inline-block; margin-right: 10px;
+    transition: transform 0.3s ease;
+    font-size: 12px; color: #e94560;
+    width: 20px; height: 20px; line-height: 20px; text-align: center;
+    background: rgba(233,69,96,0.15); border-radius: 50%;
+}
+.dt-expand-icon.open { transform: rotate(90deg); }
+
+/* ─── 表格(纯净数据区,照片与数据分离) ─── */
+.dt-table { width: 100%; border-collapse: collapse; font-size: 13px; background: #fff; }
+.dt-profile-table, .dt-weight-table { min-width: 1180px; }
+.dt-table th {
+    background: #edf7f5; color: #315f5b;
+    padding: 14px 9px; text-align: center;
+    font-weight: 800; white-space: nowrap;
+    border-bottom: 1px solid #d6e9e6;
+    position: sticky; top: 0; z-index: 5;
+}
+.dt-table td {
+    padding: 12px 9px; border-bottom: 1px solid #e7f0ee;
+    text-align: center; vertical-align: middle;
+    font-weight: 650; color: #254744;
+    transition: background 0.15s;
+}
+.dt-table tr:hover td { background: #f2faf8; }
+
+/* ─── 学员信息行(浅淡底,与表格一致;白字阴影可读) ─── */
+.dt-student-row { background: #f9fcfb !important; }
+.dt-student-row td { font-weight: 700; color:#1d4541; border-bottom: 1px solid #dcebe8 !important; }
+.dt-student-row:hover td { background: #edf8f6 !important; }
+
+/* ─── 可编辑单元格 ─── */
+.dt-editable {
+    cursor: text; min-width: 40px; min-height: 22px;
+    display: inline-block; width: 100%;
+    padding: 4px 8px; border-radius: 6px;
+    transition: all 0.2s; border: 1px solid transparent;
+}
+.dt-editable:hover { background: #fff8e1; border-color: #ffe082; }
+.dt-editable.editing { background: #fff; border-color: #e94560; box-shadow: 0 0 0 3px rgba(233,69,96,0.12); outline: none; }
+.dt-editable.saved { background: #e8f5e9; border-color: #66bb6a; animation: dt-flash 0.8s; }
+.dt-editable.error { background: #ffeef0; border-color: #ef5350; }
+.dt-note-editable { min-width: 120px; text-align: left; white-space: pre-wrap; word-break: break-word; }
+.dt-spacer-col {
+    width: 28px; min-width: 28px; padding: 0 !important;
+    border: none !important; background: #eef7f5 !important;
+}
+@keyframes dt-flash { 0% { background: #a5d6a7; } 100% { background: #e8f5e9; } }
+
+/* ─── 计算列 ─── */
+.dt-calc { color: #245c57; font-style: normal; font-weight: 750; background: transparent !important; font-variant-numeric: tabular-nums; }
+
+/* ─── 操作按钮 ─── */
+.dt-actions { display: flex; gap: 6px; justify-content: center; }
+.dt-btn-save {
+    flex: none; padding: 9px 16px; border: none; border-radius: 10px;
+    cursor: pointer; font-size: 13px; font-weight: 600;
+    background: linear-gradient(135deg, #4c8dff 0%, #2b6de3 100%);
+    color: #fff; white-space: nowrap; transition: all 0.2s;
+    box-shadow: 0 3px 10px rgba(43,109,227,0.3);
+}
+.dt-btn-save:hover { background: linear-gradient(135deg, #3d7df0 0%, #245bd0 100%); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(43,109,227,0.4); }
+.dt-btn {
+    padding: 5px 12px; border: none; border-radius: 6px;
+    cursor: pointer; font-size: 13px; font-weight: 500;
+    transition: all 0.2s; white-space: nowrap;
+}
+.dt-btn-add { background: #27ae60; color: #fff; }
+.dt-btn-add:hover { background: #219a52; transform: translateY(-1px); box-shadow: 0 3px 8px rgba(39,174,96,0.3); }
+.dt-btn-del { background: #e74c3c; color: #fff; }
+.dt-btn-del { border-radius: 8px; box-shadow: 0 4px 10px rgba(231,76,60,.13); }
+.dt-btn-del:hover { background: #d4382c; transform: translateY(-1px); box-shadow: 0 3px 8px rgba(231,76,60,0.3); }
+
+/* ─── 教练下拉 ─── */
+.dt-student-body select {
+    padding: 5px 10px; border: 1px solid #e0e0e0;
+    border-radius: 6px; font-size: 13px; cursor: pointer;
+    background: #fff; transition: border 0.2s;
+}
+.dt-student-body select:focus { outline: none; border-color: #e94560; }
+
+/* ─── 状态提示 ─── */
+.dt-loading { text-align: center; padding: 60px; color: #999; font-size: 16px; }
+.dt-loading::before { content: ''; display: inline-block; width: 28px; height: 28px; border: 3px solid #f0f0f0; border-top-color: #e94560; border-radius: 50%; animation: dt-spin 0.8s linear infinite; margin-right: 10px; vertical-align: middle; }
+@keyframes dt-spin { to { transform: rotate(360deg); } }
+.dt-empty { text-align: center; padding: 48px; color: #999; font-size: 14px; }
+
+/* ─── 状态栏 ─── */
+.dt-status {
+    position: fixed; top: 70px; right: 20px; z-index: 1000;
+    padding: 12px 24px; border-radius: 10px;
+    font-size: 14px; font-weight: 500;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+    display: none; animation: dt-slide-in 0.3s;
+}
+@keyframes dt-slide-in { from { transform: translateX(120%); } to { transform: translateX(0); } }
+.dt-status.show { display: block; }
+.dt-status.success { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
+.dt-status.error { background: #ffeef0; color: #c62828; border: 1px solid #ffcdd2; }
+
+/* ─── 页头 ─── */
+.dt-page-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 20px;
+}
+.dt-page-header h2 { font-size: 22px; font-weight: 700; color: #1a1a2e; }
+
+/* ─── 响应式 ─── */
+@media (max-width: 768px) {
+    .dt-category-tabs { width:100%; display:grid; grid-template-columns:repeat(3,1fr); }
+    .dt-category-tab { padding:8px 6px; }
+    .dt-page-header { align-items: stretch; gap: 10px; }
+    .dt-page-header .btn { width: 100%; justify-content: center; min-height: 44px; }
+    .dt-toolbar { padding: 12px; gap: 9px; }
+    .dt-toolbar > * { width: 100% !important; max-width: none !important; }
+    .dt-search { min-width: 0; min-height: 44px; font-size: 16px; }
+    .dt-extra-chk { justify-content: center; min-height: 44px; }
+    .dt-student-header { flex-direction: column; align-items: flex-start; gap: 8px; padding: 13px 14px; }
+    .dt-student-header h3 { width: 100%; flex-wrap: wrap; line-height: 1.5; }
+    .dt-student-info { width: 100%; font-size: 12px; line-height: 1.5; }
+    .dt-table { font-size: 12px; }
+    .dt-table th, .dt-table td { padding: 8px 4px; }
+    .dt-student-detail { grid-template-columns: 1fr; }
+    .dt-profile-panel { position: relative; top: auto; margin: 10px; padding: 14px; transform: none !important; will-change: auto; }
+    .dt-profile-photo { width: 104px; height: 126px; border-radius: 12px; }
+    .dt-profile-metrics { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    .dt-records-panel { width: 100%; max-width: 100vw; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .dt-records-head { min-width: 0; width: 100%; flex-direction: column; align-items: stretch; padding: 13px 12px; }
+    .dt-records-title { min-width: 0; }
+    .dt-records-title p { white-space: normal; }
+    .dt-records-actions { width: 100%; flex-wrap: wrap; }
+    .dt-records-actions select, .dt-records-actions .dt-btn { flex: 1 1 140px; min-height: 42px; }
+    .dt-profile-table, .dt-weight-table,
+    .dt-profile-edit-label, .dt-weight-section-label { min-width: 1050px; }
+    .dt-status { top: 72px; left: 12px; right: 12px; text-align: center; }
+    .dt-loading, .dt-empty { padding: 30px 12px; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dt-page-header">
+    <h2>数据表格管理</h2>
+    <button class="btn btn-primary" onclick="addStudent()" style="padding:10px 22px; font-weight:500; border-radius:10px; box-shadow:0 3px 10px rgba(233,69,96,0.3);">+ 办理入营</button>
+</div>
+
+<div class="dt-category-tabs" aria-label="学员档案分类">
+    <button id="activeCategory" class="dt-category-tab active" onclick="setStatusFilter('active')">在营学员 <span id="activeCategoryCount">0</span></button>
+    <button id="pendingCategory" class="dt-category-tab" onclick="setStatusFilter('pending')">待下一期 <span id="pendingCategoryCount">0</span></button>
+    <button id="exitedCategory" class="dt-category-tab" onclick="setStatusFilter('exited')">已出营档案 <span id="exitedCategoryCount">0</span></button>
+</div>
+
+<div class="dt-toolbar">
+    <button class="dt-btn-save" onclick="exportCurrentCard()" title="把当前展开学员的界面保存为图片">保存图片</button>
+    <input type="text" class="dt-search" id="searchInput" placeholder="搜索姓名/教练/身高..." oninput="filterTable()">
+    <select id="coachFilter" class="form-input" style="max-width:150px;" onchange="filterTable()">
+        <option value="">全部教练</option>
+    </select>
+    <label class="dt-extra-chk" title="只看今日需要加练的学员">
+        <input type="checkbox" id="extraFilter" onchange="filterTable()"> 今日加练人员
+    </label>
+</div>
+
+<div id="tableContainer">
+    <div class="dt-loading">加载中...</div>
+</div>
+
+<div class="dt-status" id="statusBar"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+var allUsers = [];
+var allCoaches = [];
+var allWeights = {};
+var expandedUsers = {};
+var todayExtraMap = {};
+var currentCampStatus = 'active';
+var profileFollowerStates = {};
+var profileScrollFrame = 0;
+
+// face_image 已是带 data: 前缀的完整 URL,兼容不带前缀的情况
+function faceUrl(f) {
+    if (!f) return '';
+    if (f.indexOf('data:') === 0) return f;
+    if (f.indexOf('/9j') === 0) return 'data:image/jpeg;base64,' + f;
+    return 'data:image/jpeg;base64,' + f;
+}
+
+async function loadData() {
+    try {
+        var [usersResp, weightsResp, extraResp] = await Promise.all([
+            // 列表不携带大尺寸人脸图；展开单个学员时再按需加载。
+            fetch('/api/users?status=all&include_face=0').then(function(r) { return r.json(); }),
+            fetch('/api/all-weights').then(function(r) { return r.json(); }),
+            fetch('/api/today-extra').then(function(r) { return r.json(); }).catch(function(){ return []; })
+        ]);
+
+        allUsers = usersResp.users || [];
+        allCoaches = usersResp.coaches || [];
+        document.getElementById('activeCategoryCount').textContent = allUsers.filter(function(u){ return (u.camp_status || 'active') === 'active'; }).length;
+        document.getElementById('pendingCategoryCount').textContent = allUsers.filter(function(u){ return u.camp_status === 'pending'; }).length;
+        document.getElementById('exitedCategoryCount').textContent = allUsers.filter(function(u){ return u.camp_status === 'exited'; }).length;
+
+        todayExtraMap = {};
+        (extraResp || []).forEach(function(e) { todayExtraMap[e.user_id] = e.reason || ''; });
+
+        allWeights = {};
+        (weightsResp.weights || []).forEach(function(w) {
+            if (!allWeights[w.user_id]) allWeights[w.user_id] = [];
+            allWeights[w.user_id].push(w);
+        });
+        Object.keys(allWeights).forEach(function(uid) {
+            allWeights[uid].sort(function(a, b) { return a.weigh_date.localeCompare(b.weigh_date); });
+        });
+
+        var coachSelect = document.getElementById('coachFilter');
+        coachSelect.innerHTML = '<option value="">全部教练</option>';
+        allCoaches.forEach(function(c) {
+            var opt = document.createElement('option');
+            opt.value = c.id;
+            opt.textContent = c.name;
+            coachSelect.appendChild(opt);
+        });
+
+        var params = new URLSearchParams(location.search);
+        if (params.get('status') === 'exited') currentCampStatus = 'exited';
+        if (params.get('status') === 'pending') currentCampStatus = 'pending';
+        if (params.get('q')) document.getElementById('searchInput').value = params.get('q');
+        setStatusFilter(currentCampStatus, false);
+    } catch(e) {
+        document.getElementById('tableContainer').innerHTML = '<div class="dt-empty">加载失败: ' + escHtml(e.message) + '</div>';
+    }
+}
+
+function renderTable() {
+    var container = document.getElementById('tableContainer');
+    var filtered = filterData();
+
+    clearProfileFollowers();
+
+    if (filtered.length === 0) {
+        container.innerHTML = '<div class="dt-empty">暂无学员数据</div>';
+        return;
+    }
+
+    var html = '';
+    filtered.forEach(function(u) {
+        var weights = allWeights[u.id] || [];
+        var initialW = parseFloat(u.initial_weight) || 0;
+        var ticeW = parseFloat(u.tice_weight) || 0;
+        var monthGoal = (initialW * 0.08).toFixed(1);
+        var dayGoal = (monthGoal / 30).toFixed(2);
+        var joinDate = (u.enroll_date || u.created_at || '').slice(0, 10);
+        var endDate = joinDate ? addDays(joinDate, 30) : '';
+        var periodSummary = u.period_summary || {};
+        var periods = u.periods || [];
+        var registeredPeriods = periodSummary.registered_periods || u.period_count || 1;
+        var completedPeriods = periodSummary.completed_periods || 0;
+        var remainingPeriods = periodSummary.remaining_periods || 0;
+        var focusPeriod = periodSummary.current_period_number || 1;
+        // 兼容现有数据：学员身高历史上保存在 phone 字段；每日备注单独存在称重记录中。
+        var height = u.phone || '';
+
+        html += '<div class="dt-student-card" id="card-' + u.id + '">';
+        html += '<div class="dt-student-header" onclick="toggleWeights(' + u.id + ')">';
+        // 初次渲染即固定头像:有照片显示照片,无照片显示占位符
+        var faceImg = faceUrl(u.face_image);
+        var faceInner = faceImg
+            ? '<img class="dt-face-avatar" src="' + faceImg + '" onerror="this.outerHTML=\'<span class=&quot;dt-face-ph&quot;>👤</span>\'">'
+            : '<span class="dt-face-ph">👤</span>';
+        html += '<span class="dt-face-slot" id="avatar-' + u.id + '">' + faceInner + '</span>';
+        var isExited = u.camp_status === 'exited';
+        var isPending = u.camp_status === 'pending';
+        var campClass = isExited ? 'exited' : (isPending ? 'pending' : 'active');
+        var campLabel = isExited ? '全部完成' : (isPending ? '待下一期入营' : '在营');
+        html += '<h3><span class="dt-expand-icon" id="icon-' + u.id + '">▶</span>' + escHtml(u.name) + '<span class="dt-camp-badge ' + campClass + '">' + campLabel + '</span>' + (todayExtraMap[u.id] ? ' <span class="dt-extra-tag" title="今日加练原因">加练:' + escHtml(todayExtraMap[u.id]) + '</span>' : '') + '</h3>';
+        html += '<div class="dt-student-info"><span>报名 ' + registeredPeriods + ' 期</span><span>已完成 ' + completedPeriods + ' 期</span><span>' + (isPending ? '下一期' : '当前') + ' 第' + focusPeriod + '/' + registeredPeriods + '期</span><span>剩余待安排 ' + remainingPeriods + ' 期</span><span>体重记录 ' + weights.length + ' 条</span></div>';
+        html += '</div>';
+        // 展开区将照片与数据分离:左侧学员档案,右侧纯净表格
+        var profileInner = faceImg
+            ? '<img src="' + faceImg + '" alt="' + escHtml(u.name) + '">'
+            : '<span class="dt-face-ph">👤</span>';
+        html += '<div class="dt-student-body" id="body-' + u.id + '" style="display:none;">';
+        html += '<div class="dt-student-detail">';
+        html += '<aside class="dt-profile-panel">';
+        html += '<div class="dt-profile-photo" id="profile-photo-' + u.id + '">' + profileInner + '</div>';
+        html += '<div class="dt-profile-badge">STUDENT PROFILE</div>';
+        html += '<div class="dt-profile-name">' + escHtml(u.name) + '</div>';
+        html += '<div class="dt-profile-metrics">';
+        html += '<div class="dt-profile-metric"><span>初始体重</span><b>' + initialW + ' 斤</b></div>';
+        html += '<div class="dt-profile-metric"><span>记录数量</span><b>' + weights.length + ' 条</b></div>';
+        html += '<div class="dt-profile-metric"><span>月目标</span><b>' + monthGoal + ' 斤</b></div>';
+        html += '<div class="dt-profile-metric"><span>入营日期</span><b>' + joinDate.slice(5) + '</b></div>';
+        html += '<div class="dt-profile-metric"><span>报名总期数</span><b>' + registeredPeriods + ' 期</b></div>';
+        html += '<div class="dt-profile-metric"><span>已完成</span><b>' + completedPeriods + ' 期</b></div>';
+        html += '<div class="dt-profile-metric"><span>当前/下一期</span><b>第' + focusPeriod + '/' + registeredPeriods + '期</b></div>';
+        html += '<div class="dt-profile-metric"><span>剩余待安排</span><b>' + remainingPeriods + ' 期</b></div>';
+        if (isExited) html += '<div class="dt-profile-metric"><span>出营日期</span><b>' + escHtml(u.exit_date || '--') + '</b></div>';
+        html += '</div></aside>';
+        html += '<div class="dt-records-panel">';
+        html += '<div class="dt-records-head">';
+        html += '<div class="dt-records-title"><span class="dt-records-title-icon">▤</span><div><h4>体重记录</h4><p>体重数据管理与跟踪 · 共 ' + weights.length + ' 条记录</p></div></div>';
+        html += '<div class="dt-records-actions">' + coachSelectHtml(u.coach_id, u.id) + (isExited ? '<span class="dt-camp-badge exited">历史档案</span>' : (isPending ? '<a class="dt-btn dt-btn-add" href="/camp-management?enter_next=' + u.id + '">办理下一期入营</a>' : '<button class="dt-btn dt-btn-add" onclick="addWeightRow(' + u.id + ')">＋ 新增记录</button>')) + '</div>';
+        html += '</div>';
+        html += '<div class="dt-profile-edit-label">学员资料编辑</div>';
+
+        html += '<table class="dt-table dt-profile-table"><thead><tr>';
+        html += '<th>姓名</th><th>身高/cm</th><th>体重/斤</th><th>月目标</th><th>天目标</th>';
+        html += '<th>入营时间</th><th>结营时间</th><th class="dt-spacer-col"></th>';
+        html += '<th>体测体重</th><th>报名总期数</th><th>责任教练</th><th>操作</th>';
+        html += '</tr></thead><tbody class="dt-student-row">';
+        html += '<tr>';
+        html += '<td><span class="dt-editable" data-uid="' + u.id + '" data-field="name" ondblclick="editCell(this)">' + escHtml(u.name) + '</span></td>';
+        html += '<td><span class="dt-editable" data-uid="' + u.id + '" data-field="phone" ondblclick="editCell(this)">' + escHtml(height) + '</span></td>';
+        html += '<td><span class="dt-editable" data-uid="' + u.id + '" data-field="initial_weight" ondblclick="editCell(this)">' + initialW + '</span></td>';
+        html += '<td><span class="dt-calc">' + monthGoal + '</span></td>';
+        html += '<td><span class="dt-calc">' + dayGoal + '</span></td>';
+        html += '<td><span class="dt-editable" data-uid="' + u.id + '" data-field="enroll_date" data-type="date" ondblclick="editCell(this)">' + joinDate + '</span></td>';
+        html += '<td><span class="dt-calc">' + endDate + '</span></td>';
+        html += '<td class="dt-spacer-col"></td>';
+        html += '<td><span class="dt-editable" data-uid="' + u.id + '" data-field="tice_weight" ondblclick="editCell(this)">' + ticeW + '</span></td>';
+        html += '<td><span class="dt-editable" data-uid="' + u.id + '" data-field="period_count" ondblclick="editCell(this)">' + (u.period_count || 1) + '</span></td>';
+        html += '<td>' + coachSelectHtml(u.coach_id, u.id) + '</td>';
+        html += '<td><div class="dt-actions">' + (isExited ? '<span class="dt-camp-badge exited">已归档</span>' : (isPending ? '<a class="dt-btn dt-btn-add" href="/camp-management?enter_next=' + u.id + '">下一期入营</a>' : '<button class="dt-btn dt-btn-del" onclick="deleteStudent(' + u.id + ')">办理本期出营</button>')) + '</div></td>';
+        html += '</tr>';
+        html += '</tbody></table>';
+
+        html += renderPeriodSummary(periods, registeredPeriods);
+        html += '<div class="dt-weight-section-label">每日体重明细（按期次归属）</div>';
+        html += '<table class="dt-table dt-weight-table" id="weights-' + u.id + '">';
+        html += '<thead><tr>';
+        html += '<th>期次</th><th>日期</th><th>备注</th><th>当日体重(斤)</th><th>当日减重</th><th>总减重(斤)</th>';
+        html += '<th>剩余天数</th><th>签约目标差</th><th class="dt-spacer-col"></th>';
+        html += '<th>共减重(斤)</th><th>教练目标</th><th>体测减重</th><th>操作</th>';
+        html += '</tr></thead><tbody id="wtbody-' + u.id + '">';
+        html += '</tbody></table>';
+
+        html += '</div>';
+        html += '</div>';
+        html += '</div>';
+        html += '</div>';
+    });
+
+    container.innerHTML = html;
+
+    filtered.forEach(function(u) {
+        renderWeights(u.id);
+    });
+}
+
+function renderPeriodSummary(periods, registeredPeriods) {
+    var html = '<section class="dt-period-summary"><h5>报名期次明细 · 共 ' + registeredPeriods + ' 期</h5><div class="dt-period-grid">';
+    (periods || []).forEach(function(p) {
+        var statusLabel = {planned:'待安排',active:'在营',completed:'已完成',cancelled:'已取消'}[p.status] || p.status;
+        var room = p.room_number ? (' · 宿舍 ' + escHtml(p.room_number)) : '';
+        var loss = p.period_loss == null ? '--' : (parseFloat(p.period_loss).toFixed(1) + '斤');
+        html += '<div class="dt-period-item ' + escHtml(p.status) + '"><strong>第' + p.period_number + '期 · ' + statusLabel + '</strong>' +
+            '<span>入营：' + escHtml(p.enroll_date || '待安排') + '　出营：' + escHtml(p.exit_date || p.planned_end_date || '待安排') + '</span><br>' +
+            '<span>教练：' + escHtml(p.coach_name || '待安排') + room + '　本期减重：' + loss + '</span></div>';
+    });
+    return html + '</div></section>';
+}
+
+function renderWeights(uid) {
+    var tbody = document.getElementById('wtbody-' + uid);
+    if (!tbody) return;
+    var weights = allWeights[uid] || [];
+    var user = allUsers.find(function(u) { return u.id === uid; });
+    if (!user) return;
+    var periods = user.periods || [];
+
+    if (weights.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="13" class="dt-empty">暂无体重记录</td></tr>';
+        return;
+    }
+
+    var html = '';
+    var calcStates = {};
+    weights.forEach(function(w) {
+        var period = periods.find(function(p){ return Number(p.id) === Number(w.period_id); }) || periods[0] || {};
+        var periodKey = String(period.id || 0);
+        if (!calcStates[periodKey]) {
+            calcStates[periodKey] = {
+                count: 0,
+                initial: parseFloat(period.initial_weight) || parseFloat(user.initial_weight) || 0,
+                tice: parseFloat(period.tice_weight) || parseFloat(user.tice_weight) || 0,
+                joinDate: (period.enroll_date || user.enroll_date || user.created_at || '').slice(0,10),
+                prev: null,
+                total: 0
+            };
+        }
+        var state = calcStates[periodKey];
+        var curW = parseFloat(w.weight) || 0;
+        var dayLoss = state.count === 0 ? 0 : (state.prev - curW);
+        var totalLossVal = state.initial - curW;
+        var daysLeft = state.joinDate ? (30 - daysBetween(state.joinDate, w.weigh_date)) : '';
+        if (daysLeft < 0) daysLeft = 0;
+        var goalDiff = (state.initial * 0.08) - totalLossVal;
+        var totalReduction = Math.max(state.total + dayLoss, state.total);
+        state.total = totalReduction;
+        var bodyTestLoss = state.tice - curW;
+        var coachGoal = state.tice ? (bodyTestLoss / (state.tice * 0.1) * 30) : null;
+
+        html += '<tr>';
+        html += '<td><span class="dt-camp-badge ' + (period.status || 'completed') + '">第' + (period.period_number || 1) + '期</span></td>';
+        html += '<td><span class="dt-editable" data-uid="' + uid + '" data-wid="' + w.id + '" data-field="weigh_date" data-type="date" ondblclick="editWeightCell(this)">' + w.weigh_date + '</span></td>';
+        html += '<td><span class="dt-editable dt-note-editable" data-uid="' + uid + '" data-wid="' + w.id + '" data-field="note" ondblclick="editWeightCell(this)">' + escHtml(w.note || '') + '</span></td>';
+        html += '<td><span class="dt-editable" data-uid="' + uid + '" data-wid="' + w.id + '" data-field="weight" ondblclick="editWeightCell(this)">' + curW.toFixed(1) + '</span></td>';
+        html += '<td><span class="dt-calc">' + dayLoss.toFixed(1) + '</span></td>';
+        html += '<td><span class="dt-calc">' + totalLossVal.toFixed(1) + '</span></td>';
+        html += '<td><span class="dt-calc">' + daysLeft + '天</span></td>';
+        html += '<td><span class="dt-calc">' + goalDiff.toFixed(3) + '</span></td>';
+        html += '<td class="dt-spacer-col"></td>';
+        html += '<td><span class="dt-calc">' + totalReduction.toFixed(1) + '</span></td>';
+        html += '<td><span class="dt-calc">' + (coachGoal === null ? '' : coachGoal.toFixed(1) + '/30') + '</span></td>';
+        html += '<td><span class="dt-calc">' + bodyTestLoss.toFixed(1) + '</span></td>';
+        html += '<td><div class="dt-actions"><button class="dt-btn dt-btn-del" onclick="deleteWeight(' + uid + ',\'' + w.weigh_date + '\')">删除</button></div></td>';
+        html += '</tr>';
+        state.prev = curW;
+        state.count += 1;
+    });
+    tbody.innerHTML = html;
+}
+
+function toggleWeights(uid) {
+    var body = document.getElementById('body-' + uid);
+    var icon = document.getElementById('icon-' + uid);
+    if (body.style.display === 'none') {
+        body.style.display = 'block';
+        icon.classList.add('open');
+        loadFaceImage(uid);
+        requestAnimationFrame(function(){ setupProfileFollower(uid); });
+    } else {
+        resetProfileFollower(uid);
+        body.style.display = 'none';
+        icon.classList.remove('open');
+    }
+}
+
+function profileFollowEnabled() {
+    return window.innerWidth > 768 &&
+        !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+function setupProfileFollower(uid) {
+    var body=document.getElementById('body-'+uid);
+    if (!body || body.style.display==='none') return;
+    var detail=body.querySelector('.dt-student-detail');
+    var panel=body.querySelector('.dt-profile-panel');
+    if (!detail || !panel || detail.dataset.profileFollower==='1') return;
+
+    var state={detail:detail,panel:panel,current:0,target:0,frame:0,setTarget:null};
+    detail.dataset.profileFollower='1';
+    profileFollowerStates[uid]=state;
+
+    function animate() {
+        state.frame=0;
+        if (!panel.isConnected) return;
+        var delta=state.target-state.current;
+        if (Math.abs(delta)<0.12) {
+            state.current=state.target;
+            panel.style.transform='translate3d(0,'+state.current.toFixed(2)+'px,0)';
+            return;
+        }
+        state.current+=delta*0.16;
+        panel.style.transform='translate3d(0,'+state.current.toFixed(2)+'px,0)';
+        state.frame=requestAnimationFrame(animate);
+    }
+
+    function setTarget(value) {
+        state.target=value;
+        if (!state.frame) state.frame=requestAnimationFrame(animate);
+    }
+    state.setTarget=setTarget;
+    requestProfileFollowerUpdate();
+}
+
+function updateProfileFollowerState(state) {
+    if (!state || !state.panel.isConnected || !state.detail.isConnected) return;
+    if (!profileFollowEnabled()) { state.setTarget(0); return; }
+    var rect=state.detail.getBoundingClientRect();
+    var margin=16;
+    var maxY=Math.max(0,state.detail.clientHeight-state.panel.offsetHeight-margin*2);
+    var wanted=window.innerHeight/2-rect.top-margin-state.panel.offsetHeight/2;
+    state.setTarget(Math.max(0,Math.min(maxY,wanted)));
+}
+
+function requestProfileFollowerUpdate() {
+    if (profileScrollFrame) return;
+    profileScrollFrame=requestAnimationFrame(function(){
+        profileScrollFrame=0;
+        Object.keys(profileFollowerStates).forEach(function(uid){
+            updateProfileFollowerState(profileFollowerStates[uid]);
+        });
+    });
+}
+
+function resetProfileFollower(uid) {
+    var state=profileFollowerStates[uid];
+    if (!state) return;
+    state.target=0;
+    if (!state.frame) {
+        state.frame=requestAnimationFrame(function glideHome() {
+            if (!state.panel.isConnected) return;
+            var delta=-state.current;
+            state.current+=delta*0.16;
+            state.panel.style.transform='translate3d(0,'+state.current.toFixed(2)+'px,0)';
+            if (Math.abs(delta)>0.12) state.frame=requestAnimationFrame(glideHome);
+            else { state.current=0; state.frame=0; state.panel.style.transform='translate3d(0,0,0)'; }
+        });
+    }
+}
+
+function clearProfileFollowers() {
+    Object.keys(profileFollowerStates).forEach(function(uid){
+        var state=profileFollowerStates[uid];
+        if (state.frame) cancelAnimationFrame(state.frame);
+    });
+    profileFollowerStates={};
+}
+
+window.addEventListener('scroll',requestProfileFollowerUpdate,{passive:true});
+window.addEventListener('resize',requestProfileFollowerUpdate,{passive:true});
+
+function loadFaceImage(uid) {
+    var slot = document.getElementById('avatar-' + uid);
+    var profilePhoto = document.getElementById('profile-photo-' + uid);
+    if (!slot || slot.dataset.loaded === '1') return;
+    slot.dataset.loaded = '1';
+    // 初次已渲染照片则跳过,仅无照片用户补加载(仅在容器内填充,不改变外层布局)
+    fetch('/api/users/' + uid + '/face-image')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (!data.face_image) return;
+            var url = faceUrl(data.face_image);
+            if (!slot.querySelector('.dt-face-avatar')) {
+                slot.innerHTML = '<img class="dt-face-avatar" src="' + url + '" onerror="this.style.display=\'none\'">';
+            }
+            if (profilePhoto && !profilePhoto.querySelector('img')) {
+                profilePhoto.innerHTML = '<img src="' + url + '" alt="学员照片" onerror="this.style.display=\'none\'">';
+            }
+        })
+        .catch(function(e) {});
+}
+
+function editCell(span) {
+    var uid = span.dataset.uid;
+    var field = span.dataset.field;
+    var type = span.dataset.type || 'text';
+    var oldVal = span.textContent;
+
+    var input = document.createElement('input');
+    input.type = type;
+    input.value = oldVal;
+    input.style.width = '80px';
+    input.style.padding = '2px 4px';
+    input.style.border = '1px solid #e94560';
+    input.style.borderRadius = '4px';
+    input.style.textAlign = 'center';
+
+    span.replaceWith(input);
+    input.focus();
+    input.select();
+
+    var saved = false;
+    async function save() {
+        if (saved) return;
+        saved = true;
+        var newVal = input.value.trim();
+
+        var newSpan = document.createElement('span');
+        newSpan.className = 'dt-editable';
+        newSpan.dataset.uid = uid;
+        newSpan.dataset.field = field;
+        newSpan.dataset.type = type;
+        newSpan.ondblclick = function() { editCell(this); };
+        newSpan.textContent = newVal;
+        input.replaceWith(newSpan);
+
+        if (newVal === oldVal) return;
+
+        var body = {};
+        body[field] = newVal;
+        if (field === 'phone') body = { phone: newVal };
+        if (field === 'initial_weight') body = { initial_weight: parseFloat(newVal) || 0 };
+        if (field === 'tice_weight') body = { tice_weight: parseFloat(newVal) || 0 };
+
+        try {
+            var resp = await fetch('/api/users/' + uid, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(body)
+            });
+            if (resp.ok) {
+                if (field === 'period_count') {
+                    await loadData();
+                    showStatus('报名总期数和期次记录已更新', 'success');
+                    return;
+                }
+                newSpan.classList.add('saved');
+                setTimeout(function() { newSpan.classList.remove('saved'); }, 600);
+                var u = allUsers.find(function(x) { return x.id == uid; });
+                if (u) {
+                    if (field === 'initial_weight') {
+                        u.initial_weight = parseFloat(newVal) || 0;
+                        renderTable();
+                    } else if (field in u) {
+                        u[field] = newVal;
+                    }
+                    if (field === 'phone') u.phone = newVal;
+                }
+                showStatus('已保存', 'success');
+            } else {
+                newSpan.classList.add('error');
+                var errorData = await resp.json().catch(function(){ return {}; });
+                showStatus(errorData.error || '保存失败', 'error');
+            }
+        } catch(e) {
+            showStatus('网络错误', 'error');
+        }
+    }
+
+    input.addEventListener('blur', save);
+    input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+        if (e.key === 'Escape') { saved = true; input.value = oldVal; input.blur(); }
+    });
+}
+
+function editWeightCell(span) {
+    var uid = span.dataset.uid;
+    var wid = span.dataset.wid;
+    var field = span.dataset.field;
+    var type = span.dataset.type || 'text';
+    var oldVal = span.textContent;
+
+    var input = document.createElement('input');
+    input.type = type;
+    input.value = oldVal;
+    input.style.width = field === 'note' ? '180px' : '80px';
+    input.style.padding = '2px 4px';
+    input.style.border = '1px solid #e94560';
+    input.style.borderRadius = '4px';
+    input.style.textAlign = field === 'note' ? 'left' : 'center';
+
+    span.replaceWith(input);
+    input.focus();
+    input.select();
+
+    var saved = false;
+    async function save() {
+        if (saved) return;
+        saved = true;
+        var newVal = input.value.trim();
+
+        var newSpan = document.createElement('span');
+        newSpan.className = 'dt-editable' + (field === 'note' ? ' dt-note-editable' : '');
+        newSpan.dataset.uid = uid;
+        newSpan.dataset.wid = wid;
+        newSpan.dataset.field = field;
+        newSpan.dataset.type = type;
+        newSpan.ondblclick = function() { editWeightCell(this); };
+        newSpan.textContent = newVal;
+        input.replaceWith(newSpan);
+
+        if (newVal === oldVal) return;
+
+        if (field === 'weight' || field === 'weigh_date' || field === 'note') {
+            var weights = allWeights[uid] || [];
+            var w = weights.find(function(x) { return x.id == wid; });
+            if (w) {
+                if (field === 'weight') w.weight = parseFloat(newVal) || 0;
+                if (field === 'weigh_date') w.weigh_date = newVal;
+                if (field === 'note') w.note = newVal;
+            }
+            var wDate = field === 'weigh_date' ? newVal : (w ? w.weigh_date : null);
+            var wVal = field === 'weight' ? (parseFloat(newVal) || 0) : (w ? w.weight : 0);
+            var wNote = field === 'note' ? newVal : (w ? (w.note || '') : '');
+            if (wDate) {
+                try {
+                    var resp = await fetch('/api/weights/' + uid, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ weigh_date: wDate, weight: wVal, note: wNote })
+                    });
+                    if (!resp.ok) throw new Error('保存失败');
+                    newSpan.classList.add('saved');
+                    setTimeout(function() { newSpan.classList.remove('saved'); }, 600);
+                    renderWeights(uid);
+                    showStatus('已保存', 'success');
+                } catch(e) {
+                    showStatus('保存失败', 'error');
+                }
+            }
+        }
+    }
+
+    input.addEventListener('blur', save);
+    input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+        if (e.key === 'Escape') { saved = true; input.value = oldVal; input.blur(); }
+    });
+}
+
+async function addWeightRow(uid) {
+    var today = new Date().toISOString().slice(0, 10);
+    var weights = allWeights[uid] || [];
+    var exists = weights.find(function(w) { return w.weigh_date === today; });
+
+    if (exists) {
+        showStatus('今日已有记录,请直接编辑', 'error');
+        return;
+    }
+
+    try {
+        var resp = await fetch('/api/weights/' + uid, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ weigh_date: today, weight: 0, note: '' })
+        });
+        if (resp.ok) {
+            await reloadWeights(uid);
+            renderWeights(uid);
+            showStatus('已添加,请编辑体重值', 'success');
+        }
+    } catch(e) {
+        showStatus('添加失败', 'error');
+    }
+}
+
+async function deleteWeight(uid, date) {
+    if (!confirm('确定删除 ' + date + ' 的体重记录?')) return;
+    try {
+        var resp = await fetch('/api/weights/' + uid + '/' + date, { method: 'DELETE' });
+        if (resp.ok) {
+            await reloadWeights(uid);
+            renderWeights(uid);
+            showStatus('已删除', 'success');
+        }
+    } catch(e) {
+        showStatus('删除失败', 'error');
+    }
+}
+
+async function reloadWeights(uid) {
+    try {
+        var resp = await fetch('/api/users/' + uid + '/weights');
+        var data = await resp.json();
+        allWeights[uid] = (data.weights || []).sort(function(a, b) {
+            return a.weigh_date.localeCompare(b.weigh_date);
+        });
+    } catch(e) {
+        allWeights[uid] = [];
+    }
+}
+
+async function addStudent() {
+    window.location.href = '/camp-management';
+}
+
+async function deleteStudent(uid) {
+    window.location.href = '/camp-management?exit=' + uid;
+}
+
+function coachSelectHtml(selectedId, uid) {
+    var html = '<select data-uid="' + uid + '" onchange="saveCoach(' + uid + ', this)" style="padding:2px 4px; border:1px solid #ddd; border-radius:4px;">';
+    html += '<option value="0">暂无</option>';
+    allCoaches.forEach(function(c) {
+        html += '<option value="' + c.id + '"' + (c.id == selectedId ? ' selected' : '') + '>' + escHtml(c.name) + '</option>';
+    });
+    html += '</select>';
+    return html;
+}
+
+async function saveCoach(uid, select) {
+    try {
+        await fetch('/api/users/' + uid, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ coach_id: parseInt(select.value) || 0 })
+        });
+        document.querySelectorAll('select[data-uid="' + uid + '"]').forEach(function(item) {
+            if (item !== select) item.value = select.value;
+        });
+        showStatus('已保存', 'success');
+    } catch(e) {
+        showStatus('保存失败', 'error');
+    }
+}
+
+function filterData() {
+    var q = document.getElementById('searchInput').value.toLowerCase();
+    var coachId = document.getElementById('coachFilter').value;
+    var extraOnly = document.getElementById('extraFilter').checked;
+    return allUsers.filter(function(u) {
+        var matchStatus = (u.camp_status || 'active') === currentCampStatus;
+        var summary=u.period_summary||{};
+        var periodText=['报名'+(summary.registered_periods||u.period_count||1)+'期','完成'+(summary.completed_periods||0)+'期','第'+(summary.current_period_number||1)+'期'].join(' ');
+        var matchQ = !q || (u.name || '').toLowerCase().includes(q) || (u.phone || '').toLowerCase().includes(q) || (u.coach_name || '').toLowerCase().includes(q) || periodText.toLowerCase().includes(q);
+        var matchC = !coachId || u.coach_id == coachId;
+        var matchE = !extraOnly || !!todayExtraMap[u.id];
+        return matchStatus && matchQ && matchC && matchE;
+    });
+}
+
+function setStatusFilter(status, updateUrl) {
+    currentCampStatus = ['active','pending','exited'].indexOf(status) >= 0 ? status : 'active';
+    document.getElementById('activeCategory').classList.toggle('active', currentCampStatus === 'active');
+    document.getElementById('pendingCategory').classList.toggle('active', currentCampStatus === 'pending');
+    document.getElementById('exitedCategory').classList.toggle('active', currentCampStatus === 'exited');
+    var extra = document.getElementById('extraFilter');
+    extra.disabled = currentCampStatus !== 'active';
+    if (extra.disabled) extra.checked = false;
+    if (updateUrl !== false) {
+        var params = new URLSearchParams(location.search);
+        params.set('status', currentCampStatus);
+        history.replaceState(null, '', location.pathname + '?' + params.toString());
+    }
+    renderTable();
+}
+
+function filterTable() {
+    renderTable();
+}
+
+function showStatus(msg, type) {
+    var bar = document.getElementById('statusBar');
+    bar.textContent = msg;
+    bar.className = 'dt-status show ' + type;
+    setTimeout(function() { bar.className = 'dt-status'; }, 2000);
+}
+
+function escHtml(s) {
+    if (!s) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function addDays(dateStr, days) {
+    var d = new Date(dateStr);
+    d.setDate(d.getDate() + days);
+    return d.toISOString().slice(0, 10);
+}
+
+function daysBetween(d1, d2) {
+    var a = new Date(d1);
+    var b = new Date(d2);
+    return Math.round((b - a) / 86400000);
+}
+
+// —— 保存当前展开学员为图片 ——
+function showStatus(msg) {
+    var bar = document.getElementById('statusBar');
+    if (!bar) return;
+    bar.style.display = 'block';
+    bar.textContent = msg;
+    setTimeout(function(){ bar.style.display = 'none'; }, 2000);
+}
+function loadHtml2canvas(cb) {
+    var s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+    s.onload = cb;
+    s.onerror = function(){ showStatus('保存组件加载失败,请改用浏览器截图'); };
+    document.head.appendChild(s);
+}
+function exportCurrentCard() {
+    var body = document.querySelector('.dt-student-body[style*="block"]');
+    var card = body ? body.closest('.dt-student-card')
+                    : document.querySelector('.dt-student-card');
+    if (!card) { showStatus('请先展开一个学员再保存'); return; }
+    if (typeof html2canvas === 'undefined') { loadHtml2canvas(function(){ doExport(card); }); }
+    else { doExport(card); }
+}
+function doExport(card) {
+    var h3 = card.querySelector('h3');
+    var name = h3 ? h3.textContent.trim() : '学员';
+    showStatus('正在生成图片...');
+    html2canvas(card, { useCORS: true, backgroundColor: null, scale: 2, logging: false })
+        .then(function(canvas) {
+            var a = document.createElement('a');
+            a.download = name + '_数据表.png';
+            a.href = canvas.toDataURL('image/png');
+            a.click();
+            showStatus('已导出: ' + name);
+        })
+        .catch(function() { showStatus('导出失败,可改用浏览器截图'); });
+}
+
+document.addEventListener('DOMContentLoaded', loadData);
+</script>
+{% endblock %}

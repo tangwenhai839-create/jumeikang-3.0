@@ -2,30 +2,68 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#1a6e69">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="聚美康管理端">
     <title>{% block title %}体重管理系统{% endblock %}</title>
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/pwa/apple-touch-icon.png?v=20260825-1">
     <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/luxury-theme.css?v=20260820-mobile1">
+    <link rel="stylesheet" href="/static/css/mobile.css?v=20260821-coach-save-v1">
     {% block head %}{% endblock %}
 </head>
-<body>
+<body class="luxury-theme h-theme admin-portal">
     <!-- 导航栏 -->
     <nav class="navbar">
-        <div class="nav-brand">⚙️ 体重管理后台</div>
+        <div class="nav-brand">
+            <img class="brand-mark brand-logo" src="/static/images/jmk-logo.svg?v=20260820-1" alt="JMK">
+            <span class="brand-copy"><strong>聚美康管理中心</strong><small>OPERATIONS CONSOLE</small></span>
+        </div>
         <div class="nav-links">
             <a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}">
-                👥 学员
+                <span class="nav-icon" aria-hidden="true">◈</span> 学员管理
             </a>
-            <a href="/settings" class="nav-link {% if request.path == '/settings' %}active{% endif %}">
-                ⚙️ 设置
+            <a href="/camp-management" class="nav-link {% if request.path == '/camp-management' %}active{% endif %}">
+                <span class="nav-icon" aria-hidden="true">⇄</span> 出入营管理
+            </a>
+            <a href="/data-table" class="nav-link {% if request.path == '/data-table' %}active{% endif %}">
+                <span class="nav-icon" aria-hidden="true">▦</span> 数据中心
+            </a>
+            <a href="/weight-comparison" class="nav-link {% if request.path == '/weight-comparison' %}active{% endif %}">
+                <span class="nav-icon" aria-hidden="true">↕</span> 早晚体重对比
+            </a>
+            <a href="/accommodation/" class="nav-link">
+                <span class="nav-icon" aria-hidden="true">⌂</span> 住宿管理
             </a>
             <a href="/exports" class="nav-link {% if request.path == '/exports' %}active{% endif %}">
-                📊 导出
+                <span class="nav-icon" aria-hidden="true">↗</span> 报表导出
+            </a>
+            {% if current_is_admin %}
+            <a href="/operation-logs" class="nav-link {% if request.path == '/operation-logs' %}active{% endif %}">
+                <span class="nav-icon" aria-hidden="true">▤</span> 操作日志
+            </a>
+            <a href="/settings" class="nav-link nav-settings-icon {% if request.path == '/settings' %}active{% endif %}" aria-label="系统设置" title="系统设置">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 8.25A3.75 3.75 0 1 0 12 15.75 3.75 3.75 0 0 0 12 8.25Z"/>
+                    <path d="M19.1 13.1c.04-.36.04-.74 0-1.1l1.46-1.14-1.7-2.94-1.72.7a7.6 7.6 0 0 0-.96-.56L15.92 6.2h-3.4l-.26 1.86c-.34.16-.66.35-.96.56l-1.72-.7-1.7 2.94L9.34 12a5.1 5.1 0 0 0 0 1.1l-1.46 1.14 1.7 2.94 1.72-.7c.3.21.62.4.96.56l.26 1.86h3.4l.26-1.86c.34-.16.66-.35.96-.56l1.72.7 1.7-2.94-1.46-1.14Z"/>
+                </svg>
+                <span class="settings-label">系统设置</span>
+            </a>
+            {% endif %}
+            <a href="/account" class="nav-link {% if request.path == '/account' %}active{% endif %}" title="当前账号：{{ current_account.username if current_account else '' }}">
+                <span class="nav-icon" aria-hidden="true">♙</span> {{ current_account.name if current_account else '个人账号' }}
+            </a>
+            <a href="#" id="pwaInstallLink" class="nav-link" style="display:none" onclick="showPWAInstallGuide(); return false;">
+                <span class="nav-icon" aria-hidden="true">＋</span> 添加到主屏幕
             </a>
             <a href="#" class="nav-link" onclick="doLogout(); return false;">
-                🚪 退出
+                <span class="nav-icon" aria-hidden="true">○</span> 退出
             </a>
         </div>
-        <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('show')">☰</button>
+        <button class="nav-toggle" type="button" aria-label="打开功能菜单" aria-expanded="false" onclick="toggleMobileMore(this)">☰</button>
     </nav>
 
     <!-- 主要内容 -->
@@ -33,14 +71,57 @@
         {% block content %}{% endblock %}
     </main>
 
+    <nav class="mobile-bottom-nav" aria-label="手机端管理导航">
+        <a href="/" class="mobile-bottom-item {% if request.path == '/' %}active{% endif %}">
+            <span class="mobile-bottom-icon" aria-hidden="true">⌂</span><span>首页</span>
+        </a>
+        <a href="/{% if request.path == '/' %}#studentSection{% endif %}" class="mobile-bottom-item" data-mobile-students>
+            <span class="mobile-bottom-icon" aria-hidden="true">♙</span><span>学员</span>
+        </a>
+        <a href="/data-table" class="mobile-bottom-item {% if request.path in ['/data-table', '/weight-comparison'] %}active{% endif %}">
+            <span class="mobile-bottom-icon" aria-hidden="true">＋</span><span>称重</span>
+        </a>
+        <a href="/camp-management" class="mobile-bottom-item {% if request.path == '/camp-management' %}active{% endif %}">
+            <span class="mobile-bottom-icon" aria-hidden="true">⇄</span><span>出入营</span>
+        </a>
+        <button class="mobile-bottom-item" type="button" aria-label="更多功能" aria-expanded="false" onclick="toggleMobileMore(this)">
+            <span class="mobile-bottom-icon" aria-hidden="true">•••</span><span>更多</span>
+        </button>
+    </nav>
+
     <!-- 通用脚本 -->
     <script src="/static/js/app.js"></script>
+    <script src="/static/pwa/pwa.js?v=20260825-1"></script>
     <script>
+        function toggleMobileMore(trigger) {
+            const menu = document.querySelector('.nav-links');
+            if (!menu) return;
+            const opened = menu.classList.toggle('show');
+            document.querySelectorAll('[onclick="toggleMobileMore(this)"]').forEach(function(btn) {
+                btn.setAttribute('aria-expanded', opened ? 'true' : 'false');
+            });
+            if (opened) {
+                const firstLink = menu.querySelector('a');
+                if (firstLink) firstLink.focus({preventScroll: true});
+            }
+        }
+
+        document.addEventListener('click', function(event) {
+            const menu = document.querySelector('.nav-links');
+            if (!menu || !menu.classList.contains('show')) return;
+            if (menu.contains(event.target) || event.target.closest('[onclick="toggleMobileMore(this)"]')) return;
+            menu.classList.remove('show');
+            document.querySelectorAll('[onclick="toggleMobileMore(this)"]').forEach(function(btn) {
+                btn.setAttribute('aria-expanded', 'false');
+            });
+        });
+
         async function doLogout() {
             if (!confirm('确定退出登录？')) return;
             try {
                 await fetch('/api/logout', {method: 'POST'});
             } catch (e) {}
+            try { localStorage.removeItem('jmk_admin_user_list_v2'); } catch (e) {}
             window.location.href = '/login';
         }
     </script>

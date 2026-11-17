@@ -4,7 +4,7 @@
 {% block content %}
 <div class="dashboard-container">
     <div class="page-header">
-        <h2>📊 排名看板</h2>
+        <h2>排名看板</h2>
         <div class="header-controls">
             <select id="periodSelect" onchange="switchPeriod()" class="form-select">
                 <option value="week">本周</option>
@@ -49,8 +49,8 @@
                         <tr>
                             <th>排名</th>
                             <th>姓名</th>
-                            <th>期初体重(kg)</th>
-                            <th>期末体重(kg)</th>
+                            <th>期初体重(斤)</th>
+                            <th>期末体重(斤)</th>
                             <th>掉秤率</th>
                             <th>趋势</th>
                         </tr>
@@ -113,8 +113,8 @@ async function loadRankings() {
         return '<tr>' +
             '<td class="rank-cell">' + medal + ' ' + (i+1) + '</td>' +
             '<td><strong>' + r.name + '</strong></td>' +
-            '<td>' + r.first_weight + ' kg</td>' +
-            '<td>' + r.last_weight + ' kg</td>' +
+            '<td>' + r.first_weight + ' 斤</td>' +
+            '<td>' + r.last_weight + ' 斤</td>' +
             '<td class="' + rateClass + '">' + r.change_rate.toFixed(2) + '%</td>' +
             '<td>' + trendIcon + '</td>' +
             '</tr>';

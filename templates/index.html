@@ -1,7 +1,22 @@
 {% extends "layout.html" %}
-{% block title %}称重 - 体重管理系统{% endblock %}
+{% block title %}{% if weigh_mode == 'evening' %}晚上称重{% else %}早上称重{% endif %} - 体重管理系统{% endblock %}
+
+{% block head %}
+<style>
+.weigh-mode-banner{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0 auto 18px;padding:14px 18px;max-width:1180px;border:1px solid rgba(163,126,44,.32);border-radius:14px;background:linear-gradient(135deg,rgba(30,25,38,.96),rgba(46,37,56,.94));box-shadow:0 10px 30px rgba(0,0,0,.18)}
+.weigh-mode-banner strong{font-size:20px;color:#f2d58b}.weigh-mode-banner span{color:#d8d1dc}.weigh-mode-back{white-space:nowrap;color:#f2d58b;text-decoration:none;border:1px solid rgba(242,213,139,.45);border-radius:999px;padding:8px 14px}
+@media(max-width:640px){.weigh-mode-banner{align-items:flex-start;margin-bottom:12px;padding:12px 14px}.weigh-mode-banner strong{font-size:17px}.weigh-mode-banner span{display:block;font-size:12px;margin-top:2px}.weigh-mode-back{padding:7px 11px;font-size:13px}}
+</style>
+{% endblock %}
 
 {% block content %}
+<div class="weigh-mode-banner">
+    <div>
+        <strong>{% if weigh_mode == 'evening' %}晚上称重{% else %}早上称重{% endif %}</strong>
+        <span>{% if weigh_mode == 'evening' %}数据仅用于完整学员表导出{% else %}当前减重统计与排名使用此数据{% endif %}</span>
+    </div>
+    <a class="weigh-mode-back" href="/">切换称重时段</a>
+</div>
 <div class="weigh-container">
     <!-- 左侧: 摄像头区域 -->
     <div class="camera-section">
@@ -28,7 +43,7 @@
                 <option value="">加载中...</option>
             </select>
             <button class="btn btn-secondary camera-switch" id="switchCamera" onclick="switchCamera()">
-                🔄 刷新摄像头
+                刷新摄像头
             </button>
         </div>
     </div>
@@ -37,13 +52,13 @@
     <div class="info-section">
         <!-- 语音开关 -->
         <button class="btn btn-secondary voice-toggle" id="voiceToggleBtn" onclick="toggleVoice()">
-            🔊 语音已开
+            语音已开
         </button>
 
         <!-- 识别结果 -->
         <div class="card" id="recognizedCard" style="display:none">
             <div class="card-header">
-                <h3>✅ 已识别</h3>
+                <h3>会员识别成功</h3>
             </div>
             <div class="card-body text-center">
                 <div class="avatar-large" id="avatarDisplay">👤</div>
@@ -57,7 +72,7 @@
         <!-- 未识别 -->
         <div class="card" id="unrecognizedCard">
             <div class="card-header">
-                <h3>⏳ 等待识别</h3>
+                <h3>等待会员识别</h3>
             </div>
             <div class="card-body text-center">
                 <div class="avatar-large">👤</div>
@@ -68,7 +83,7 @@
         <!-- 电子秤称重 -->
         <div class="card" id="weighCard">
             <div class="card-header">
-                <h3>⚖️ 电子秤称重</h3>
+                <h3>{% if weigh_mode == 'evening' %}晚上称重{% else %}早上称重{% endif %}</h3>
             </div>
             <div class="card-body">
                 <!-- 连接控制区域 -->
@@ -81,10 +96,10 @@
                         </select>
                     </div>
                     <button class="btn btn-primary" id="connectScaleBtn" onclick="connectScale()">
-                        🔌 连接电子秤
+                        连接电子秤
                     </button>
                     <button class="btn btn-secondary" id="disconnectScaleBtn" onclick="disconnectScale()" style="display:none">
-                        ❌ 断开连接
+                        断开连接
                     </button>
                     <p class="scale-hint" id="scaleHint">点击连接，选择USB串口电子秤</p>
                 </div>
@@ -106,7 +121,7 @@
                 <!-- 手动输入（备用） -->
                 <div class="manual-input-toggle" id="manualToggle">
                     <button class="btn btn-sm btn-secondary" onclick="toggleManualInput()">
-                        ✏️ 手动输入
+                        手动输入
                     </button>
                 </div>
                 <div class="manual-input-area" id="manualInputArea" style="display:none">
@@ -118,7 +133,7 @@
                     </div>
                     <div class="btn-group">
                         <button class="btn btn-primary btn-large" onclick="submitWeight()">
-                            💾 保存
+                            保存
                         </button>
                     </div>
                 </div>
@@ -132,10 +147,11 @@
         </div>
         {% endif %}
 
-        <!-- 今日已称重 -->
+        {% if weigh_mode != 'evening' %}
+        <!-- 今日已称重（仅早上称重显示） -->
         <div class="card">
             <div class="card-header">
-                <h3>📋 今日已称重</h3>
+                <h3>今日称重记录</h3>
                 <span id="todayCount" class="badge">0 人</span>
             </div>
             <div class="card-body">
@@ -144,12 +160,16 @@
                 </div>
             </div>
         </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
+const WEIGH_MODE = {{ weigh_mode|default('morning')|tojson }};
+const WEIGH_API = WEIGH_MODE === "evening" ? "/api/evening-weigh" : "/api/weigh";
+const IS_EVENING_WEIGH = WEIGH_MODE === "evening";
 let stream = null;
 let currentUserId = null;
 let captureInterval = null;
@@ -165,7 +185,16 @@ let scaleSerial = null;
 let scaleReader = null;
 let scaleBaudRate = 9600;
 let scaleConnected = false;
-let scaleConnecting = false;
+const SCALE_CONNECTION_STATES = Object.freeze({
+    DISCONNECTED: "disconnected",
+    CONNECTING: "connecting",
+    CONNECTED: "connected",
+    DISCONNECTING: "disconnecting"
+});
+let scaleConnectionState = SCALE_CONNECTION_STATES.DISCONNECTED;
+let scaleConnectionAttempt = 0;
+let scaleConnectPromise = null;
+let scaleDisconnectPromise = null;
 let scaleReadLoopPromise = null;
 let scaleVerifying = false;
 let scaleReadBuffer = "";
@@ -242,7 +271,7 @@ function toggleVoice() {
     voiceEnabled = !voiceEnabled;
     const btn = document.getElementById("voiceToggleBtn");
     if (btn) {
-        btn.textContent = voiceEnabled ? "🔊 语音已开" : "🔇 语音已关";
+        btn.textContent = voiceEnabled ? "语音已开" : "语音已关";
         btn.className = voiceEnabled ? "btn btn-secondary voice-on" : "btn btn-secondary voice-off";
     }
 }
@@ -254,7 +283,7 @@ if (window.speechSynthesis) {
     };
 }
 
-window.addEventListener("beforeunload", function() {
+function stopCameraForPageExit() {
     if (stream) {
         stream.getTracks().forEach(function(t) { t.stop(); });
         stream = null;
@@ -263,8 +292,18 @@ window.addEventListener("beforeunload", function() {
         clearInterval(captureInterval);
         captureInterval = null;
     }
-    disconnectScale();
-});
+}
+
+let pageExitCleanupStarted = false;
+function cleanupDevicesForPageExit() {
+    if (pageExitCleanupStarted) return;
+    pageExitCleanupStarted = true;
+    stopCameraForPageExit();
+    disconnectScale({ announce: false, reason: "page-exit" });
+}
+
+window.addEventListener("pagehide", cleanupDevicesForPageExit);
+window.addEventListener("beforeunload", cleanupDevicesForPageExit);
 
 // --- 摄像头设备管理（用 deviceId 精确选择，兼容 USB 摄像头）---
 async function enumerateCameras() {
@@ -317,10 +356,65 @@ function onCameraSelectChange() {
     startCamera();
 }
 
+async function openWorkingCamera(preferredDeviceId, facingMode) {
+    var candidateIds = [];
+    if (preferredDeviceId) candidateIds.push(preferredDeviceId);
+    cameraDevices.forEach(function(device) {
+        if (device.deviceId && candidateIds.indexOf(device.deviceId) === -1) {
+            candidateIds.push(device.deviceId);
+        }
+    });
+    // 最后用浏览器默认摄像头兜底。
+    candidateIds.push(null);
+
+    var lastError = null;
+    for (var i = 0; i < candidateIds.length; i++) {
+        var deviceId = candidateIds[i];
+        var constraints = {
+            video: {
+                width: { ideal: 640 },
+                height: { ideal: 480 }
+            }
+        };
+        if (deviceId) {
+            constraints.video.deviceId = { exact: deviceId };
+        } else if (facingMode) {
+            constraints.video.facingMode = { ideal: facingMode };
+        }
+
+        try {
+            console.log("[Camera] 尝试打开:", deviceId ? deviceId.slice(0, 8) : "浏览器默认设备");
+            return await navigator.mediaDevices.getUserMedia(constraints);
+        } catch (err) {
+            lastError = err;
+            console.warn("[Camera] 当前设备打开失败:", err.name, err.message);
+            // 权限被禁止时，尝试其他设备也不会成功，直接提示用户授权。
+            if (err.name === "NotAllowedError" || err.name === "SecurityError") {
+                throw err;
+            }
+        }
+    }
+    throw lastError || new Error("未找到可用摄像头");
+}
+
+function cameraErrorMessage(err) {
+    if (err.name === "NotAllowedError" || err.name === "SecurityError") {
+        return "摄像头权限被禁止，请在地址栏网站设置中改为允许";
+    }
+    if (err.name === "NotReadableError" || err.name === "TrackStartError") {
+        return "摄像头被其他程序占用，请关闭其他摄像头页面或应用";
+    }
+    if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
+        return "未找到可用摄像头";
+    }
+    return "摄像头访问失败: " + err.message;
+}
+
 async function startCamera(facingMode) {
     try {
         if (stream) {
             stream.getTracks().forEach(function(t) { t.stop(); });
+            stream = null;
         }
         // 如果还没枚举过设备，先枚举
         if (cameraDevices.length === 0) {
@@ -331,37 +425,15 @@ async function startCamera(facingMode) {
         if (sel && sel.value) {
             currentDeviceId = sel.value;
         }
-        var constraints;
-        if (currentDeviceId) {
-            // 精确指定设备
-            constraints = {
-                video: {
-                    deviceId: { exact: currentDeviceId },
-                    width: { ideal: 640 },
-                    height: { ideal: 480 }
-                }
-            };
-            console.log("[Camera] 使用 deviceId 打开:", currentDeviceId.slice(0, 8));
-        } else {
-            // fallback：用 facingMode
-            facingMode = facingMode || "environment";
-            constraints = {
-                video: {
-                    width: { ideal: 640 },
-                    height: { ideal: 480 },
-                    facingMode: { ideal: facingMode }
-                }
-            };
-            console.log("[Camera] 无 deviceId，使用 facingMode:", facingMode);
-        }
-        try {
-            stream = await navigator.mediaDevices.getUserMedia(constraints);
-        } catch (e1) {
-            // 精确指定失败 → 退化为无约束
-            console.warn("[Camera] 精确打开失败，尝试无约束:", e1.message);
-            stream = await navigator.mediaDevices.getUserMedia({
-                video: { width: { ideal: 640 }, height: { ideal: 480 } }
-            });
+        facingMode = facingMode || "environment";
+        stream = await openWorkingCamera(currentDeviceId, facingMode);
+
+        // 打开成功后同步下拉框，避免下次再次选择状态异常的同名设备。
+        var track = stream.getVideoTracks()[0];
+        var workingDeviceId = track && track.getSettings ? track.getSettings().deviceId : "";
+        if (workingDeviceId) {
+            currentDeviceId = workingDeviceId;
+            if (sel) sel.value = workingDeviceId;
         }
         const video = document.getElementById("video");
         video.srcObject = stream;
@@ -369,7 +441,7 @@ async function startCamera(facingMode) {
         setStatus("running", "摄像头已启动");
         startCapture();
     } catch (err) {
-        setStatus("error", "摄像头访问失败: " + err.message);
+        setStatus("error", cameraErrorMessage(err));
         console.error("[Camera] 启动失败:", err);
     }
 }
@@ -506,147 +578,143 @@ function isWebSerialSupported() {
 
 async function connectScale() {
     if (!isWebSerialSupported()) {
-        speakScaleError("您的浏览器不支持 Web Serial API，请使用 Chrome 或 Edge 浏览器");
-        alert("您的浏览器不支持 Web Serial API，请使用 Chrome 或 Edge 浏览器，并确保已开启实验性功能。");
+        alert("当前浏览器不支持串口连接，请使用最新版 Microsoft Edge。");
         return;
     }
-    // 状态锁：防止重复点击触发 open() already in progress
-    if (scaleConnected) {
-        alert("电子秤已连接");
-        return;
+
+    // 只有“未连接”状态可以发起连接，拦截连续点击和程序重复调用。
+    if (scaleConnectionState !== SCALE_CONNECTION_STATES.DISCONNECTED ||
+            scaleSerial || scaleConnectPromise || scaleDisconnectPromise) {
+        console.log("[Scale] 当前状态为 " + scaleConnectionState + "，跳过重复连接");
+        return scaleConnectPromise || scaleDisconnectPromise || Promise.resolve();
     }
-    if (scaleConnecting) {
-        alert("正在连接中，请稍候...");
-        return;
-    }
-    scaleConnecting = true;
-    var btn = document.getElementById("connectScaleBtn");
-    if (btn) { btn.disabled = true; btn.textContent = "⏳ 连接中..."; }
+
+    const connectionAttempt = ++scaleConnectionAttempt;
+    setScaleConnectionState(SCALE_CONNECTION_STATES.CONNECTING);
+    scaleConnectPromise = (async function() {
+        let requestedPort = null;
+        try {
+            scaleBaudRate = parseInt(document.getElementById("baudRateSelect").value) || 9600;
+            requestedPort = await navigator.serial.requestPort({ filters: [] });
+            if (connectionAttempt !== scaleConnectionAttempt ||
+                    scaleConnectionState !== SCALE_CONNECTION_STATES.CONNECTING) {
+                return;
+            }
+
+            scaleSerial = requestedPort;
+            await requestedPort.open({
+                baudRate: scaleBaudRate,
+                dataBits: 8,
+                stopBits: 1,
+                parity: "none",
+                flowControl: "none"
+            });
+
+            // 页面退出等动作可能发生在 open() 等待期间，失效连接不得继续占用端口。
+            if (connectionAttempt !== scaleConnectionAttempt ||
+                    scaleConnectionState !== SCALE_CONNECTION_STATES.CONNECTING) {
+                try { await requestedPort.close(); } catch (e) {}
+                if (scaleSerial === requestedPort) scaleSerial = null;
+                return;
+            }
+
+            setScaleConnectionState(SCALE_CONNECTION_STATES.CONNECTED);
+            console.log("[Scale] 电子秤已连接，波特率：" + scaleBaudRate);
+            if (currentUserId) {
+                startScaleReading();
+            }
+        } catch (err) {
+            console.error("[Scale] 连接失败:", err);
+            if (err.name !== "NotFoundError" && err.name !== "AbortError") {
+                alert("连接电子秤失败：" + err.message);
+            }
+            // 无论 requestPort/open 在哪个阶段失败，都走与人工断开相同的清理流程。
+            await disconnectScale({ announce: false, reason: "connect-error" });
+        }
+    })();
+
     try {
-        scaleBaudRate = parseInt(document.getElementById("baudRateSelect").value) || 9600;
-
-        // 1. 优先获取已授权端口（避免重复弹窗 + 复用之前的授权）
-        var existingPorts = await navigator.serial.getPorts();
-        if (existingPorts.length > 0) {
-            scaleSerial = existingPorts[0];
-            console.log("[Scale] 使用已授权端口");
-        } else {
-            scaleSerial = await navigator.serial.requestPort({ filters: [] });
-            console.log("[Scale] 用户选择了新端口");
-        }
-
-        // 2. 如果端口已打开（状态残留），先关闭；若仍异常则 forget() 彻底重置
-        if (scaleSerial.readable || scaleSerial.writable) {
-            console.log("[Scale] 端口已打开，先关闭...");
-            try { await scaleSerial.close(); } catch (e) {}
-            if (scaleSerial.readable || scaleSerial.writable) {
-                console.log("[Scale] 端口仍异常，调用 forget() 重置");
-                try { await scaleSerial.forget(); } catch (e) {}
-                scaleSerial = await navigator.serial.requestPort({ filters: [] });
-            }
-        }
-
-        // 3. 打开端口（此时端口确保是 closed 状态）
-        try {
-            await scaleSerial.open({
-                baudRate: scaleBaudRate,
-                dataBits: 8,
-                stopBits: 1,
-                parity: "none",
-                flowControl: "none"
-            });
-        } catch (openErr) {
-            // 打开失败时，forget 重置后重新选择端口再试一次
-            console.log("[Scale] 首次打开失败，尝试 forget 重置后重试:", openErr.message);
-            try { await scaleSerial.forget(); } catch (e) {}
-            await new Promise(function(r) { setTimeout(r, 500); });
-            scaleSerial = await navigator.serial.requestPort({ filters: [] });
-            await new Promise(function(r) { setTimeout(r, 300); });
-            await scaleSerial.open({
-                baudRate: scaleBaudRate,
-                dataBits: 8,
-                stopBits: 1,
-                parity: "none",
-                flowControl: "none"
-            });
-            console.log("[Scale] 重试打开成功");
-        }
-        // 关键：断言 DTR 信号，告诉电子秤芯片主机已就绪（兼容 CH340/CP2102）
-        try {
-            await scaleSerial.setSignals({ dataTerminalReady: true });
-            console.log("[Scale] DTR 信号已断言");
-        } catch (sigErr) {
-            console.warn("[Scale] 设置 DTR 信号失败（可能浏览器不支持）:", sigErr.message);
-        }
-        scaleConnected = true;
-        updateScaleUI("connected");
-        speakScaleConnected();
-        console.log("[Scale] 电子秤已连接，波特率：" + scaleBaudRate);
-        if (currentUserId) {
-            startScaleReading();
-        }
-    } catch (err) {
-        console.error("[Scale] 连接失败:", err);
-        if (err.name !== "NotFoundError" && err.name !== "AbortError") {
-            if (err.message && err.message.indexOf("already in progress") !== -1) {
-                speakScaleError("端口正在使用中，请刷新页面重试");
-                alert("连接失败：端口正在使用中。\n\n请刷新页面或拔插USB线后重试。\n\n如仍无法解决，请在控制台执行：\nnavigator.serial.getPorts().then(ports => Promise.all(ports.map(p => p.forget())))");
-            } else if (err.message && err.message.indexOf("Failed to open") !== -1) {
-                speakScaleError("无法打开串口，可能被占用");
-                alert("连接失败：无法打开串口。\n可能原因：端口被占用 / USB线松动 / 驱动问题");
-            } else {
-                speakScaleError("连接失败");
-                alert("连接电子秤失败: " + err.message);
-            }
-        }
-        // 连接失败时彻底清理端口（forget 重置授权，避免下次连接残留状态）
-        if (scaleSerial) {
-            try { await scaleSerial.close(); } catch (e) {}
-            try { await scaleSerial.forget(); } catch (e) {}
-            scaleSerial = null;
-        }
-        scaleConnected = false;
+        await scaleConnectPromise;
     } finally {
-        scaleConnecting = false;
-        if (btn) {
-            btn.disabled = false;
-            if (!scaleConnected) {
-                btn.textContent = "🔌 连接电子秤";
-            }
-        }
+        scaleConnectPromise = null;
     }
 }
 
-async function disconnectScale() {
-    scaleConnected = false;
+async function cleanupScaleConnection() {
+    // 固定顺序：停止读取 → cancel Reader → 等待读取循环退出 → releaseLock → close COM。
     stopScaleReading();
-    // 严格顺序：cancel reader → await readLoop 退出(releaseLock) → close port
-    try {
-        if (scaleReader) {
-            try { await scaleReader.cancel(); } catch (e) {}
+
+    const reader = scaleReader;
+    const readLoopPromise = scaleReadLoopPromise;
+    const port = scaleSerial;
+
+    if (reader) {
+        try { await reader.cancel(); } catch (err) {
+            console.warn("[Scale] 取消 Reader 时出错:", err);
         }
-        // 等待 readScaleLoop 的 finally 执行完毕（releaseLock）
-        if (scaleReadLoopPromise) {
-            try { await scaleReadLoopPromise; } catch (e) {}
-            scaleReadLoopPromise = null;
-        }
-        if (scaleSerial) {
-            try { await scaleSerial.close(); } catch (e) {}
-            // 等待 OS 释放端口句柄（Windows 串口独占模式需要时间）
-            await new Promise(function(r) { setTimeout(r, 300); });
-            scaleSerial = null;
-        }
-    } catch (err) {
-        console.warn("[Scale] 断开连接时出错:", err);
     }
-    scaleReader = null;
+    if (readLoopPromise) {
+        try { await readLoopPromise; } catch (err) {
+            console.warn("[Scale] 读取循环已异常退出:", err);
+        }
+    }
+    if (reader) {
+        try { reader.releaseLock(); } catch (err) {
+            console.warn("[Scale] 释放 Reader 锁时出错:", err);
+        }
+    }
+    if (port) {
+        try { await port.close(); } catch (err) {
+            console.warn("[Scale] 关闭串口时出错:", err);
+        }
+    }
+
+    if (scaleReader === reader) scaleReader = null;
+    if (scaleReadLoopPromise === readLoopPromise) scaleReadLoopPromise = null;
+    if (scaleSerial === port) scaleSerial = null;
     scaleReadBuffer = "";
     scaleWeightHistory = [];
     scaleStableStartTime = null;
     scaleLastWeight = null;
-    updateScaleUI("disconnected");
-    speakScaleDisconnected();
-    console.log("[Scale] 电子秤已断开");
+    scaleVerifying = false;
+}
+
+async function disconnectScale(options) {
+    options = options || {};
+
+    // 防止用户连续点击“断开”或异常处理重复进入清理流程。
+    if (scaleConnectionState === SCALE_CONNECTION_STATES.DISCONNECTING && scaleDisconnectPromise) {
+        return scaleDisconnectPromise;
+    }
+    if (scaleConnectionState === SCALE_CONNECTION_STATES.DISCONNECTED &&
+            !scaleSerial && !scaleReader && !scaleReadLoopPromise) {
+        updateScaleUI(SCALE_CONNECTION_STATES.DISCONNECTED);
+        return;
+    }
+
+    ++scaleConnectionAttempt; // 使仍在等待 requestPort/open 的连接尝试立即失效。
+    setScaleConnectionState(SCALE_CONNECTION_STATES.DISCONNECTING);
+    scaleDisconnectPromise = (async function() {
+        try {
+            await cleanupScaleConnection();
+        } finally {
+            setScaleConnectionState(SCALE_CONNECTION_STATES.DISCONNECTED);
+            if (options.announce !== false) speakScaleDisconnected();
+            console.log("[Scale] 电子秤已断开" + (options.reason ? "，原因：" + options.reason : ""));
+        }
+    })();
+
+    try {
+        await scaleDisconnectPromise;
+    } finally {
+        scaleDisconnectPromise = null;
+    }
+}
+
+function setScaleConnectionState(state) {
+    scaleConnectionState = state;
+    scaleConnected = state === SCALE_CONNECTION_STATES.CONNECTED;
+    updateScaleUI(state);
 }
 
 function updateScaleUI(state) {
@@ -656,17 +724,43 @@ function updateScaleUI(state) {
     const scaleDisplay = document.getElementById("scaleDisplay");
     const stabilityIndicator = document.getElementById("stabilityIndicator");
 
-    if (state === "connected") {
+    if (!connectBtn || !disconnectBtn || !hint || !scaleDisplay || !stabilityIndicator) return;
+
+    if (state === "connecting") {
+        connectBtn.style.display = "inline-flex";
+        connectBtn.disabled = true;
+        connectBtn.textContent = "连接中...";
+        disconnectBtn.style.display = "none";
+        disconnectBtn.disabled = true;
+        hint.textContent = "正在连接电子秤，请选择 COM3";
+        hint.className = "scale-hint";
+    } else if (state === "connected") {
         connectBtn.style.display = "none";
+        connectBtn.disabled = true;
+        connectBtn.textContent = "连接电子秤";
         disconnectBtn.style.display = "inline-flex";
+        disconnectBtn.disabled = false;
+        disconnectBtn.textContent = "断开连接";
         hint.textContent = "电子秤已连接，请站上秤面";
         hint.className = "scale-hint connected";
         scaleDisplay.style.display = "block";
         stabilityIndicator.style.display = "block";
+    } else if (state === "disconnecting") {
+        connectBtn.style.display = "none";
+        connectBtn.disabled = true;
+        disconnectBtn.style.display = "inline-flex";
+        disconnectBtn.disabled = true;
+        disconnectBtn.textContent = "断开中...";
+        hint.textContent = "正在停止读取并释放 COM3...";
+        hint.className = "scale-hint";
     } else if (state === "disconnected") {
         connectBtn.style.display = "inline-flex";
+        connectBtn.disabled = false;
+        connectBtn.textContent = "连接电子秤";
         disconnectBtn.style.display = "none";
-        hint.textContent = "点击连接，选择USB串口电子秤";
+        disconnectBtn.disabled = true;
+        disconnectBtn.textContent = "断开连接";
+        hint.textContent = "点击连接电子秤，并选择 COM3";
         hint.className = "scale-hint";
         scaleDisplay.style.display = "none";
         stabilityIndicator.style.display = "none";
@@ -679,9 +773,9 @@ function updateScaleUI(state) {
 }
 
 function startScaleReading() {
-    if (!scaleConnected || !scaleSerial) return;
+    if (scaleConnectionState !== SCALE_CONNECTION_STATES.CONNECTED || !scaleSerial) return;
     // 防止重复读取：如果 readLoop 仍在运行，跳过
-    if (scaleReader) {
+    if (scaleReadLoopPromise) {
         console.log("[Scale] 已在读取中，跳过");
         return;
     }
@@ -690,7 +784,23 @@ function startScaleReading() {
     scaleWeightHistory = [];
     scaleStableStartTime = null;
     setStabilityStatus("waiting");
-    scaleReadLoopPromise = readScaleLoop();
+    const readLoopPromise = readScaleLoop();
+    scaleReadLoopPromise = readLoopPromise;
+    readLoopPromise.then(function() {
+        if (scaleConnectionState === SCALE_CONNECTION_STATES.CONNECTED &&
+                scaleReadLoopPromise === readLoopPromise) {
+            console.error("[Scale] 读取循环意外结束，开始自动释放串口");
+            speakScaleError("电子秤读取已停止");
+            disconnectScale({ announce: false, reason: "read-ended" });
+        }
+    }).catch(function(err) {
+        if (scaleConnectionState === SCALE_CONNECTION_STATES.CONNECTED &&
+                scaleReadLoopPromise === readLoopPromise) {
+            console.error("[Scale] 读取数据错误:", err);
+            speakScaleError("数据读取异常");
+            disconnectScale({ announce: false, reason: "read-error" });
+        }
+    });
     scaleStabilityCheckInterval = setInterval(checkStability, 100);
     console.log("[Scale] 开始读取数据");
 }
@@ -703,14 +813,15 @@ function stopScaleReading() {
 }
 
 async function readScaleLoop() {
-    if (!scaleConnected || !scaleSerial) return;
-    // 使用局部变量保存 reader，确保 finally 中 releaseLock 不被外部置 null 干扰
+    if (scaleConnectionState !== SCALE_CONNECTION_STATES.CONNECTED || !scaleSerial) return;
+    // Reader 的 releaseLock 由统一清理流程负责，确保与 close() 的顺序固定。
     var reader;
     try {
         reader = scaleSerial.readable.getReader();
         scaleReader = reader;
         console.log("[Scale] readLoop 已启动，等待数据...");
-        while (scaleConnected && scaleSerial && reader === scaleReader) {
+        while (scaleConnectionState === SCALE_CONNECTION_STATES.CONNECTED &&
+                scaleSerial && reader === scaleReader) {
             var result = await reader.read();
             if (result.done) break;
             if (result.value) {
@@ -730,18 +841,7 @@ async function readScaleLoop() {
                 processScaleBuffer();
             }
         }
-    } catch (err) {
-        if (err.name !== "AbortError" && scaleConnected) {
-            console.error("[Scale] 读取数据错误:", err);
-            speakScaleError("数据读取异常");
-        }
     } finally {
-        if (reader) {
-            try { reader.releaseLock(); } catch (e) {}
-        }
-        if (scaleReader === reader) {
-            scaleReader = null;
-        }
         console.log("[Scale] readLoop 已退出");
     }
 }
@@ -1017,7 +1117,7 @@ async function autoSaveWeight(weight) {
     var hint = document.getElementById("stabilityText");
     try {
         if (hint) hint.textContent = "⏳ 正在上传体重数据...";
-        const resp = await fetch("/api/weigh", {
+        const resp = await fetch(WEIGH_API, {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({
@@ -1026,7 +1126,7 @@ async function autoSaveWeight(weight) {
             })
         });
         if (resp.status === 409) {
-            const overwriteResp = await fetch("/api/weigh", {
+            const overwriteResp = await fetch(WEIGH_API, {
                 method: "PUT",
                 headers: {"Content-Type": "application/json"},
                 body: JSON.stringify({
@@ -1075,7 +1175,7 @@ function resetScaleAfterSave() {
     const displayEl = document.getElementById("weightRealtime");
     if (displayEl) displayEl.textContent = "--.--";
     setStabilityStatus("waiting");
-    updateScaleUI("connected");
+    updateScaleUI(scaleConnectionState);
 }
 
 function toggleManualInput() {
@@ -1096,7 +1196,7 @@ async function submitWeight() {
         return;
     }
     const userName = document.getElementById("userName").textContent;
-    const resp = await fetch("/api/weigh", {
+    const resp = await fetch(WEIGH_API, {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({
@@ -1107,7 +1207,7 @@ async function submitWeight() {
     if (resp.status === 409) {
         const data = await resp.json();
         if (confirm(data.message)) {
-            const overwriteResp = await fetch("/api/weigh", {
+            const overwriteResp = await fetch(WEIGH_API, {
                 method: "PUT",
                 headers: {"Content-Type": "application/json"},
                 body: JSON.stringify({
@@ -1127,7 +1227,7 @@ async function submitWeight() {
     }
     if (resp.ok) {
         speakWeightSuccess(userName, weight);
-        alert("✅ " + userName + " 体重已保存!");
+        alert("✅ " + userName + (IS_EVENING_WEIGH ? " 晚上体重已保存!" : " 体重已保存!"));
         resetWeighIn();
     }
 }
@@ -1144,10 +1244,11 @@ function resetWeighIn() {
     const displayEl = document.getElementById("weightRealtime");
     if (displayEl) displayEl.textContent = "--.--";
     setStabilityStatus("waiting");
-    loadTodayWeighed();
+    if (!IS_EVENING_WEIGH) loadTodayWeighed();
 }
 
 async function loadTodayWeighed() {
+    if (IS_EVENING_WEIGH) return;
     try {
         const resp = await fetch("/api/today");
         const data = await resp.json();
@@ -1175,19 +1276,9 @@ document.addEventListener("DOMContentLoaded", function() {
     }).catch(function() {
         startCamera();
     });
-    loadTodayWeighed();
-    setInterval(loadTodayWeighed, 10000);
-    if (!isWebSerialSupported()) {
-        const hint = document.getElementById("scaleHint");
-        if (hint) {
-            hint.textContent = "当前浏览器不支持 Web Serial API，请使用 Chrome/Edge 或手动输入";
-            hint.className = "scale-hint unsupported";
-        }
-        const connectBtn = document.getElementById("connectScaleBtn");
-        if (connectBtn) {
-            connectBtn.disabled = true;
-            connectBtn.style.opacity = "0.5";
-        }
+    if (!IS_EVENING_WEIGH) {
+        loadTodayWeighed();
+        setInterval(loadTodayWeighed, 10000);
     }
 });
 </script>

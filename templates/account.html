@@ -1,0 +1,68 @@
+{% extends "admin_layout.html" %}
+{% block title %}个人账号 - 聚美康管理中心{% endblock %}
+{% block head %}
+<style>
+.account-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}.account-row{display:flex;justify-content:space-between;gap:16px;padding:13px 0;border-bottom:1px solid #edf1f5}.account-row:last-child{border-bottom:0}.account-row span{color:#64748b}.account-state{display:inline-flex;padding:3px 9px;border-radius:999px;background:#eaf7ef;color:#18794e;font-size:12px}.account-form{max-width:620px}@media(max-width:760px){.account-grid{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+{% block content %}
+<div class="admin-container">
+    <div class="page-header"><div><h2>个人账号</h2><p class="text-muted">当前登录身份和安全设置</p></div></div>
+    <div class="account-grid">
+        <div class="card">
+            <div class="card-header"><h3>账号信息</h3></div>
+            <div class="card-body" id="accountInfo"><p class="text-muted">正在加载...</p></div>
+        </div>
+        <div class="card">
+            <div class="card-header"><h3>修改登录密码</h3></div>
+            <div class="card-body account-form">
+                <div class="form-group" id="oldPasswordGroup">
+                    <label>当前密码</label>
+                    <input class="form-input" type="password" id="oldPassword" autocomplete="current-password">
+                </div>
+                <div class="form-group"><label>新密码</label><input class="form-input" type="password" id="newPassword" autocomplete="new-password" placeholder="至少6位"></div>
+                <div class="form-group"><label>确认新密码</label><input class="form-input" type="password" id="confirmPassword" autocomplete="new-password"></div>
+                <button class="btn btn-primary" id="passwordBtn" type="button" onclick="changePassword()">保存新密码</button>
+                <p class="text-muted" id="passwordTip" style="font-size:12px;margin-top:10px"></p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+let currentAccount = null;
+function esc(value){return String(value == null ? '' : value).replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];});}
+async function loadAccount(){
+    const resp = await fetch('/api/current-account');
+    const data = await resp.json();
+    if(!resp.ok){location.href='/login';return;}
+    currentAccount = data.account;
+    document.getElementById('accountInfo').innerHTML =
+        '<div class="account-row"><span>教练姓名</span><strong>'+esc(currentAccount.name)+'</strong></div>'+
+        '<div class="account-row"><span>登录账号</span><strong>'+esc(currentAccount.username)+'</strong></div>'+
+        '<div class="account-row"><span>账号身份</span><strong>'+(currentAccount.role==='admin'?'管理员':'教练')+'</strong></div>'+
+        '<div class="account-row"><span>人脸绑定</span><strong class="account-state">'+(currentAccount.face_enrolled?'已绑定本人脸':'尚未录入')+'</strong></div>'+
+        '<div class="account-row"><span>密码状态</span><strong>'+(currentAccount.password_set?'已设置':'尚未设置，可先用人脸登录')+'</strong></div>'+
+        '<div class="account-row"><span>最近登录</span><strong>'+esc(currentAccount.last_login_at||'本次为首次登录')+'</strong></div>';
+    document.getElementById('oldPasswordGroup').style.display=currentAccount.password_set?'block':'none';
+    document.getElementById('passwordTip').textContent=currentAccount.password_set?'修改密码时需要验证当前密码。':'你当前通过人脸登录，可直接设置自己的第一个密码。';
+}
+async function changePassword(){
+    const oldPassword=document.getElementById('oldPassword').value;
+    const newPassword=document.getElementById('newPassword').value;
+    const confirmPassword=document.getElementById('confirmPassword').value;
+    if(newPassword.length<6){alert('新密码不能少于6位');return;}
+    if(newPassword!==confirmPassword){alert('两次输入的新密码不一致');return;}
+    const btn=document.getElementById('passwordBtn');btn.disabled=true;btn.textContent='正在保存...';
+    try{
+        const resp=await fetch('/api/change-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({old_password:oldPassword,new_password:newPassword,confirm_password:confirmPassword})});
+        const data=await resp.json().catch(function(){return {};});
+        if(!resp.ok)throw new Error(data.error||'修改失败');
+        document.getElementById('oldPassword').value='';document.getElementById('newPassword').value='';document.getElementById('confirmPassword').value='';
+        alert('密码修改成功');await loadAccount();
+    }catch(error){alert(error.message||'修改失败');}finally{btn.disabled=false;btn.textContent='保存新密码';}
+}
+document.addEventListener('DOMContentLoaded',loadAccount);
+</script>
+{% endblock %}

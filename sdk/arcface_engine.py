@@ -8,6 +8,8 @@ import ctypes
 import base64
 import hashlib
 import logging
+import threading
+from functools import wraps
 
 try:
     import numpy as np
@@ -21,6 +23,15 @@ logger = logging.getLogger('FaceEngine')
 
 class FaceNotInitializedError(Exception):
     pass
+
+
+def _engine_synchronized(method):
+    """Serialize calls that share one native ArcFace engine handle."""
+    @wraps(method)
+    def wrapped(self, *args, **kwargs):
+        with self._engine_lock:
+            return method(self, *args, **kwargs)
+    return wrapped
 
 
 # ─── ArcFace SDK 常量 ────────────────────────────
@@ -133,6 +144,7 @@ class FaceEngine:
     """ArcFace SDK V3.0 人脸引擎"""
 
     def __init__(self):
+        self._engine_lock = threading.RLock()
         self._lib = None
         self._engine = None
         self._initialized = False
@@ -172,6 +184,7 @@ class FaceEngine:
             return -2
         return result[0]
 
+    @_engine_synchronized
     def initialize(self, app_id='', sdk_key=''):
         if self._demo_mode:
             print('[FaceEngine] Demo mode')
@@ -477,6 +490,7 @@ class FaceEngine:
 
     # ─── 人脸检测 ───────────────────────────────
 
+    @_engine_synchronized
     def detect_faces(self, image_data):
         if not self._initialized:
             raise FaceNotInitializedError()
@@ -516,6 +530,7 @@ class FaceEngine:
 
     # ─── 活体检测 ───────────────────────────────
 
+    @_engine_synchronized
     def detect_liveness(self, image_data):
         """检测图片中人脸的活体状态 (RGB活体检测)
 
@@ -614,6 +629,7 @@ class FaceEngine:
 
     # ─── 特征提取 ───────────────────────────────
 
+    @_engine_synchronized
     def extract_feature(self, image_data):
         if not self._initialized:
             raise FaceNotInitializedError()
@@ -663,6 +679,7 @@ class FaceEngine:
 
     # ─── 合并方法：一次检测完成活体+特征提取 ─────
 
+    @_engine_synchronized
     def extract_feature_with_liveness(self, image_data):
         """一次图片解码 + 一次 ASFDetectFaces，同时完成活体检测和特征提取
 
@@ -769,6 +786,7 @@ class FaceEngine:
 
     # ─── 特征比对 & 搜索 ─────────────────────────
 
+    @_engine_synchronized
     def compare_feature(self, f1, f2):
         if self._demo_mode:
             if f1 == f2:
@@ -823,6 +841,7 @@ class FaceEngine:
 
     # ─── 清理 ───────────────────────────────────
 
+    @_engine_synchronized
     def uninitialize(self):
         if self._engine and self._lib:
             try:

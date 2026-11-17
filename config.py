@@ -4,7 +4,7 @@ import os
 import platform
 
 # 服务器配置
-SERVER_HOST = '0.0.0.0'
+SERVER_HOST = os.environ.get('WEIGHT_HOST', '127.0.0.1')
 SERVER_PORT = 5000
 DEBUG = False
 

@@ -1,18 +1,76 @@
 {% extends "admin_layout.html" %}
 {% block title %}学员管理 - 体重管理系统{% endblock %}
+{% block head %}
+<style>
+.user-edit-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}.user-stay-editor{margin:16px 0;padding:14px;border:1px solid #d9e2ec;border-radius:14px;background:#f8fafc}.user-stay-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}.user-stay-title strong{font-size:15px}.user-stay-options{display:grid;grid-template-columns:1fr 1fr;gap:10px}.user-stay-options .full{grid-column:1/-1}.user-stay-toggle{display:flex;align-items:flex-start;gap:10px;cursor:pointer}.user-stay-toggle input{width:20px;height:20px;margin-top:1px;accent-color:#1e3a5f}.user-stay-toggle span{display:grid;gap:2px}.user-stay-toggle small,.user-stay-status{color:#64748b;font-size:12px;line-height:1.5}.user-stay-status{padding:9px 11px;border-radius:9px;background:#eef2f7}.user-stay-status.is-ready{color:#166534;background:#dcfce7}.user-stay-status.is-error{color:#991b1b;background:#fee2e2}
+@media(max-width:600px){.user-edit-row,.user-stay-options{grid-template-columns:1fr}.user-stay-options .full{grid-column:auto}}
+</style>
+{% endblock %}
 
 {% block content %}
+<section class="mobile-admin-home" id="mobileHome" aria-labelledby="mobileHomeTitle">
+    <div class="mobile-home-welcome">
+        <div>
+            <p class="mobile-home-date" id="mobileHomeDate">今日管理概况</p>
+            <h1 id="mobileHomeTitle">聚美康管理台</h1>
+            <p>常用工作集中在这里，手机上也能快速处理。</p>
+        </div>
+        <a class="mobile-home-refresh" href="#" onclick="refreshMobileOverview(); return false;" aria-label="刷新今日数据">↻</a>
+    </div>
+
+    <div class="mobile-stat-grid" aria-label="今日统计">
+        <a href="#studentSection" class="mobile-stat-card mobile-stat-green">
+            <span class="mobile-stat-label">在营学员</span><strong id="mobileActiveCount">--</strong><small>查看全部</small>
+        </a>
+        <a href="/data-table" class="mobile-stat-card mobile-stat-blue">
+            <span class="mobile-stat-label">今日已称</span><strong id="mobileWeighedCount">--</strong><small>查看记录</small>
+        </a>
+        <a href="/data-table" class="mobile-stat-card mobile-stat-gold">
+            <span class="mobile-stat-label">今日未称</span><strong id="mobileUnweighedCount">--</strong><small>及时跟进</small>
+        </a>
+        <a href="/exports" class="mobile-stat-card mobile-stat-rose">
+            <span class="mobile-stat-label">今日加练</span><strong id="mobileExtraCount">--</strong><small>查看名单</small>
+        </a>
+    </div>
+
+    <div class="mobile-home-section">
+        <div class="mobile-section-heading"><h2>快捷操作</h2><span>高频功能</span></div>
+        <div class="mobile-quick-grid">
+            <a href="/camp-management" class="mobile-quick-action"><span class="mobile-quick-icon">＋</span><strong>办理入营</strong><small>新学员建档</small></a>
+            <a href="#mobileStudentSearch" class="mobile-quick-action" onclick="focusMobileStudentSearch();"><span class="mobile-quick-icon">⌕</span><strong>查找学员</strong><small>快速编辑档案</small></a>
+            <a href="/data-table" class="mobile-quick-action"><span class="mobile-quick-icon">▤</span><strong>补录体重</strong><small>新增或修改记录</small></a>
+            <a href="/camp-management" class="mobile-quick-action"><span class="mobile-quick-icon">⇥</span><strong>办理出营</strong><small>归档历史数据</small></a>
+            <a href="#mobileStudentSearch" class="mobile-quick-action" onclick="focusMobileStudentSearch();"><span class="mobile-quick-icon">◎</span><strong>人脸补录</strong><small>进入学员编辑</small></a>
+            <a href="/exports" class="mobile-quick-action"><span class="mobile-quick-icon">↗</span><strong>报表导出</strong><small>排名与加练名单</small></a>
+            <a href="/accommodation/" class="mobile-quick-action"><span class="mobile-quick-icon">⌂</span><strong>住宿管理</strong><small>房间、床位与入住</small></a>
+            {% if current_is_admin %}<a href="#coachSection" class="mobile-quick-action" onclick="switchTab('coaches');"><span class="mobile-quick-icon">♙</span><strong>教练管理</strong><small>账号、人脸与资料</small></a>{% endif %}
+            {% if current_is_admin %}<a href="/settings" class="mobile-quick-action"><span class="mobile-quick-icon">⚙</span><strong>系统设置</strong><small>识别与系统配置</small></a>{% endif %}
+            <a href="/account" class="mobile-quick-action"><span class="mobile-quick-icon">♙</span><strong>个人账号</strong><small>查看身份与修改密码</small></a>
+        </div>
+    </div>
+</section>
+
 <!-- 顶部持久标签页 -->
 <div class="admin-tabs" style="margin-bottom: 20px;">
-    <a href="#" class="tab active" data-tab="students" onclick="switchTab('students'); return false;">👥 学员管理</a>
-    <a href="#" class="tab" data-tab="coaches" onclick="switchTab('coaches'); return false;">👨‍🏫 教练管理</a>
+    <a href="#" class="tab active" data-tab="students" onclick="switchTab('students'); return false;">学员管理</a>
+    {% if current_is_admin %}<a href="#" class="tab" data-tab="coaches" onclick="switchTab('coaches'); return false;">教练管理</a>{% endif %}
 </div>
 
 <div class="admin-container" id="studentSection">
     <div class="page-header">
-        <h2>👥 学员管理</h2>
-        <button class="btn btn-primary" onclick="showAddModal()">+ 添加学员</button>
+        <h2>学员管理</h2>
+        <a class="btn btn-primary" href="/camp-management">+ 办理入营</a>
     </div>
+
+    <div class="mobile-student-tools">
+        <label class="mobile-search-box" for="mobileStudentSearch">
+            <span aria-hidden="true">⌕</span>
+            <input id="mobileStudentSearch" type="search" placeholder="搜索姓名或责任教练" autocomplete="off" oninput="filterMobileUsers(this.value)">
+            <button type="button" onclick="clearMobileStudentSearch()" aria-label="清空搜索">×</button>
+        </label>
+        <div class="mobile-list-summary"><span id="mobileUserResultText">正在加载学员...</span><a href="/data-table">进入数据中心 ›</a></div>
+    </div>
+    <div class="mobile-user-list" id="mobileUserList" aria-live="polite"></div>
 
     <div class="card">
         <div class="card-body">
@@ -24,7 +82,7 @@
                             <th>姓名</th>
                             <th>责任教练</th>
                             <th>初始体重</th>
-                            <th>最新体重 (kg)</th>
+                            <th>最新体重 (斤)</th>
                             <th>人脸状态</th>
                             <th>注册日期</th>
                             <th>操作</th>
@@ -53,7 +111,7 @@
                 <input type="text" id="userName" class="form-input" required>
             </div>
             <div class="form-group">
-                <label>初始体重 (kg)</label>
+                <label>初始体重 (斤)</label>
                 <input type="number" id="userInitWeight" class="form-input" step="0.1" min="20" max="300">
             </div>
             <div class="form-group">
@@ -65,7 +123,7 @@
                 <textarea id="userNote" class="form-input" rows="2"></textarea>
             </div>
             <div class="form-group">
-                <label>体测体重 (kg)</label>
+                <label>体测体重 (斤)</label>
                 <input type="number" id="userTiceWeight" class="form-input" step="0.1" min="0" max="500" value="0">
             </div>
             <div class="form-group">
@@ -74,14 +132,64 @@
                     <option value="0">-- 暂无 --</option>
                 </select>
             </div>
+            <div class="user-edit-row">
+                <div class="form-group">
+                    <label>入营日期 *</label>
+                    <input type="date" id="userEnrollDate" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label>报名总期数 *</label>
+                    <input type="number" id="userPeriodCount" class="form-input" min="1" step="1" value="1" required>
+                </div>
+            </div>
+            <div class="user-stay-editor" id="userStayEditor" hidden>
+                <div class="user-stay-title"><strong>住宿安排</strong><span id="userCurrentStayLabel" class="text-muted">当前未住宿</span></div>
+                <label class="user-stay-toggle" for="userArrangeStay">
+                    <input id="userArrangeStay" type="checkbox" onchange="toggleUserStayOptions()">
+                    <span><b>安排入住宿舍</b><small>取消勾选并保存，将同时办理退宿。</small></span>
+                </label>
+                <div class="user-stay-options" id="userStayOptions" hidden style="margin-top:12px">
+                    <div class="form-group">
+                        <label>空调（可选筛选）</label>
+                        <select id="userStayAir" class="form-input" onchange="refreshUserStayRooms()">
+                            <option value="">全部房间</option><option value="true">空调房</option><option value="false">非空调房</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>房型（可选筛选）</label>
+                        <select id="userStayType" class="form-input" onchange="refreshUserStayRooms()">
+                            <option value="">全部房型</option><option value="SINGLE">单人间</option><option value="DOUBLE">双人间</option><option value="TRIPLE">三人间</option><option value="QUAD">四人间</option>
+                        </select>
+                    </div>
+                    <div class="form-group full">
+                        <label>搜索房间号</label>
+                        <input id="userStaySearch" class="form-input" type="search" autocomplete="off" placeholder="例如 A426、302" oninput="scheduleUserStayRefresh()">
+                    </div>
+                    <div class="form-group full">
+                        <label>选择房间 *</label>
+                        <select id="userStayRoom" class="form-input"><option value="">正在读取可入住房间</option></select>
+                    </div>
+                    <div class="form-group full">
+                        <label class="user-stay-toggle" for="userStayExclusive">
+                            <input id="userStayExclusive" type="checkbox" onchange="refreshUserStayRooms()">
+                            <span><b>整间独住</b><small>多人间也会立即按满房处理，直到该学员退宿或出营。</small></span>
+                        </label>
+                    </div>
+                    <div class="form-group full">
+                        <label>住宿联系电话</label>
+                        <input id="userStayPhone" class="form-input" type="tel" maxlength="20" placeholder="可选">
+                    </div>
+                    <div class="user-stay-status full" id="userStayStatus">正在读取住宿信息...</div>
+                </div>
+            </div>
             <div class="form-group">
                 <label>人脸录入</label>
                 <div class="face-enroll">
                     <video id="enrollVideo" autoplay playsinline></video>
                     <canvas id="enrollCanvas" style="display:none"></canvas>
                     <div class="face-enroll-actions">
-                        <button class="btn btn-secondary" onclick="startEnrollCamera()">📷 打开摄像头</button>
-                        <button class="btn btn-warning" onclick="resetEnrollFace()">🔄 重新扫描</button>
+                        <button class="btn btn-secondary" onclick="startEnrollCamera()">打开摄像头</button>
+                        <button class="btn btn-warning" onclick="resetEnrollFace()">重新扫描</button>
                     </div>
                     <div id="enrollStatus" class="enroll-status text-muted">点击“打开摄像头”开始自动扫脸录入</div>
                     <div id="enrollPreview" class="enroll-preview"></div>
@@ -90,16 +198,17 @@
         </div>
         <div class="modal-footer">
             <button class="btn btn-secondary" onclick="closeModal('userModal')">取消</button>
-            <button class="btn btn-primary" onclick="saveUser()">💾 保存</button>
+            <button class="btn btn-primary" onclick="saveUser()">保存</button>
         </div>
     </div>
 </div>
 
 
+{% if current_is_admin %}
 <!-- 教练管理模块 -->
 <div class="admin-container" id="coachSection" style="display:none">
     <div class="page-header">
-        <h2>👨‍🏫 教练管理</h2>
+        <h2>教练管理</h2>
         <button class="btn btn-primary" onclick="showAddCoachModal()">+ 添加教练</button>
     </div>
     <div class="card">
@@ -111,13 +220,15 @@
                             <th>序号</th>
                             <th>姓名</th>
                             <th>电话</th>
+                            <th>登录账号</th>
+                            <th>账号状态</th>
                             <th>人脸状态</th>
-                            <th>创建时间</th>
+                            <th>最近登录</th>
                             <th>操作</th>
                         </tr>
                     </thead>
                     <tbody id="coachTableBody">
-                        <tr><td colspan="5" class="text-center text-muted">加载中...</td></tr>
+                        <tr><td colspan="8" class="text-center text-muted">加载中...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -143,13 +254,25 @@
                 <input type="text" id="coachPhone" class="form-input">
             </div>
             <div class="form-group">
+                <label>独立登录账号 *</label>
+                <input type="text" id="coachUsername" class="form-input" autocomplete="off" placeholder="建议使用手机号">
+            </div>
+            <div class="form-group">
+                <label id="coachPasswordLabel">初始密码（可不填）</label>
+                <input type="password" id="coachPassword" class="form-input" autocomplete="new-password" placeholder="至少6位；不填可先使用人脸登录">
+                <p class="text-muted" style="font-size:12px;margin-top:5px">编辑已有教练时，不填写表示保留原密码。</p>
+            </div>
+            <div class="form-group" id="coachAccountActiveGroup">
+                <label class="checkbox-label"><input type="checkbox" id="coachAccountActive" checked> 允许该教练登录</label>
+            </div>
+            <div class="form-group">
                 <label>人脸录入</label>
                 <div class="face-enroll">
                     <video id="coachEnrollVideo" autoplay playsinline></video>
                     <canvas id="coachEnrollCanvas" style="display:none"></canvas>
                     <div class="face-enroll-actions">
-                        <button class="btn btn-secondary" onclick="startCoachEnrollCamera()">📷 打开摄像头</button>
-                        <button class="btn btn-warning" onclick="resetCoachEnrollFace()">🔄 重新扫描</button>
+                        <button class="btn btn-secondary" onclick="startCoachEnrollCamera()">打开摄像头</button>
+                        <button class="btn btn-warning" onclick="resetCoachEnrollFace()">重新扫描</button>
                     </div>
                     <div id="coachEnrollStatus" class="enroll-status text-muted">点击“打开摄像头”开始自动扫脸录入</div>
                     <div id="coachEnrollPreview" class="enroll-preview"></div>
@@ -158,10 +281,12 @@
         </div>
         <div class="modal-footer">
             <button class="btn btn-secondary" onclick="closeModal('coachModal')">取消</button>
-            <button class="btn btn-primary" onclick="saveCoach()">保存</button>
+            <button class="btn btn-primary" id="coachSaveBtn" type="button" onclick="saveCoach()">保存</button>
         </div>
     </div>
-</div>{% endblock %}
+</div>
+{% endif %}
+{% endblock %}
 
 {% block scripts %}
 <script>
@@ -176,34 +301,278 @@ let coachEnrollScanConsecutive = 0;
 let capturedCoachFaceImage = null;
 let coachEnrollLivenessPassed = false;
 const ENROLL_SCAN_THRESHOLD = 2;
+const USER_LIST_CACHE_KEY = 'jmk_admin_user_list_v2';
+const USER_LIST_CACHE_TTL = 30 * 60 * 1000;
+let currentMobileUsers = [];
+let editingAccommodation = null;
+let userAccommodationLoaded = false;
+let userStayRoomRequest = 0;
+let userStaySearchTimer = null;
 
-// 加载学员列表
-async function loadUsers() {
-    const resp = await fetch('/api/users');
-    const data = await resp.json();
+function mobileEsc(value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, function(char) {
+        return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char];
+    });
+}
+
+function todayInputValue() {
+    const now = new Date();
+    return now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+}
+
+function toggleUserStayOptions() {
+    const enabled = document.getElementById('userArrangeStay').checked;
+    document.getElementById('userStayOptions').hidden = !enabled;
+    if (enabled) refreshUserStayRooms();
+    else document.getElementById('userCurrentStayLabel').textContent = editingAccommodation && editingAccommodation.enabled ? '保存后将办理退宿' : '当前未住宿';
+}
+
+function scheduleUserStayRefresh() {
+    if (userStaySearchTimer) clearTimeout(userStaySearchTimer);
+    userStaySearchTimer = setTimeout(refreshUserStayRooms, 250);
+}
+
+function userStayRoomFallback() {
+    if (!editingAccommodation || !editingAccommodation.enabled) return null;
+    return {
+        id: editingAccommodation.room_id,
+        roomNumber: editingAccommodation.room_number,
+        roomType: editingAccommodation.room_type,
+        hasAirConditioner: editingAccommodation.has_air_conditioner,
+        capacity: editingAccommodation.capacity,
+        occupiedCount: editingAccommodation.occupied_count,
+        availableCount: editingAccommodation.available_count,
+        status: editingAccommodation.status
+    };
+}
+
+async function refreshUserStayRooms() {
+    if (!userAccommodationLoaded || !document.getElementById('userArrangeStay').checked) return;
+    const requestId = ++userStayRoomRequest;
+    const select = document.getElementById('userStayRoom');
+    const status = document.getElementById('userStayStatus');
+    const previous = select.value || String((editingAccommodation || {}).room_id || '');
+    const air = document.getElementById('userStayAir').value;
+    const type = document.getElementById('userStayType').value;
+    const keyword = document.getElementById('userStaySearch').value.trim();
+    const exclusive = document.getElementById('userStayExclusive').checked;
+    select.disabled = true;
+    select.innerHTML = '<option value="">正在查询可入住房间...</option>';
+    status.className = 'user-stay-status full';
+    status.textContent = '正在查询可入住房间...';
+    try {
+        const query = [];
+        if (air !== '') query.push('hasAirConditioner=' + encodeURIComponent(air));
+        if (type) query.push('roomType=' + encodeURIComponent(type));
+        if (keyword) query.push('keyword=' + encodeURIComponent(keyword));
+        const resp = await fetch('/accommodation-api/rooms' + (query.length ? '?' + query.join('&') : ''));
+        const result = await resp.json();
+        if (!resp.ok) throw new Error(result.message || '房间查询失败');
+        if (requestId !== userStayRoomRequest) return;
+        const currentId = Number((editingAccommodation || {}).room_id || 0);
+        let rooms = (Array.isArray(result) ? result : []).filter(function(room) {
+            return Number(room.id) === currentId || (Number(room.availableCount) > 0 && room.status !== 'FULL');
+        });
+        if (exclusive) {
+            rooms = rooms.filter(function(room) {
+                const occupied = Number(room.occupiedCount || 0);
+                return Number(room.id) === currentId ? occupied <= 1 : occupied === 0;
+            });
+        }
+        const fallback = userStayRoomFallback();
+        if (fallback && (!exclusive || Number(fallback.occupiedCount || 0) <= 1) && Number(fallback.id) === currentId && !rooms.some(function(room){return Number(room.id) === currentId;})) {
+            rooms.unshift(fallback);
+        }
+        if (!rooms.length) {
+            select.innerHTML = '<option value="">暂无符合条件的房间</option>';
+            status.className = 'user-stay-status full is-error';
+            status.textContent = exclusive ? '没有可用于整间独住的空房。' : '没有符合搜索或筛选条件的可入住房间。';
+            return;
+        }
+        const typeLabels = {SINGLE:'单人间',DOUBLE:'双人间',TRIPLE:'三人间',QUAD:'四人间'};
+        select.innerHTML = '<option value="">请选择具体房间</option>' + rooms.map(function(room) {
+            const occupied = Number(room.occupiedCount || 0);
+            const current = Number(room.id) === currentId;
+            const state = current ? '当前入住' : (occupied ? '已住'+occupied+'人' : '空房');
+            return '<option value="'+Number(room.id)+'">'+mobileEsc(room.roomNumber)+'房 · '+(typeLabels[room.roomType]||room.roomType)+' · '+(room.hasAirConditioner?'空调':'非空调')+' · '+state+' · 剩余'+Number(room.availableCount||0)+'/'+Number(room.capacity||0)+'床</option>';
+        }).join('');
+        if (rooms.some(function(room){return String(room.id) === previous;})) select.value = previous;
+        select.disabled = false;
+        status.className = 'user-stay-status full is-ready';
+        status.textContent = '可选择 '+rooms.length+' 间房'+(exclusive?'；保存后所选房间将整间锁定。':'。');
+    } catch (error) {
+        if (requestId !== userStayRoomRequest) return;
+        select.innerHTML = '<option value="">房间读取失败</option>';
+        status.className = 'user-stay-status full is-error';
+        status.textContent = '暂时无法读取房间：' + error.message;
+    }
+}
+
+function prepareUserAccommodation(user) {
+    const editor = document.getElementById('userStayEditor');
+    const checkbox = document.getElementById('userArrangeStay');
+    editor.hidden = false;
+    editingAccommodation = user.accommodation || {enabled:false};
+    userAccommodationLoaded = !user.accommodation_error && user.accommodation !== null;
+    checkbox.disabled = !userAccommodationLoaded;
+    checkbox.checked = !!(editingAccommodation && editingAccommodation.enabled);
+    document.getElementById('userStayAir').value = '';
+    document.getElementById('userStayType').value = '';
+    document.getElementById('userStaySearch').value = '';
+    document.getElementById('userStayExclusive').checked = !!(editingAccommodation && editingAccommodation.exclusive_use);
+    document.getElementById('userStayPhone').value = (editingAccommodation && editingAccommodation.contact_phone) || '';
+    document.getElementById('userCurrentStayLabel').textContent = userAccommodationLoaded
+        ? (editingAccommodation.enabled ? '当前：'+editingAccommodation.room_number+'房'+(editingAccommodation.exclusive_use?' · 整间独住':'') : '当前未住宿')
+        : '住宿读取失败，本次不会修改住宿';
+    document.getElementById('userStayOptions').hidden = !checkbox.checked;
+    if (checkbox.checked && userAccommodationLoaded) refreshUserStayRooms();
+}
+
+function renderMobileUserList(users) {
+    const list = document.getElementById('mobileUserList');
+    const summary = document.getElementById('mobileUserResultText');
+    if (!list || !summary) return;
+    summary.textContent = '共 ' + users.length + ' 位学员';
+    if (!users.length) {
+        list.innerHTML = '<div class="mobile-empty-state">没有找到符合条件的学员</div>';
+        return;
+    }
+    list.innerHTML = users.map(function(u) {
+        const name = mobileEsc(u.name || '未命名');
+        const coach = mobileEsc(u.coach_name || '暂未分配');
+        const latest = u.latest_weight ? mobileEsc(u.latest_weight) + ' 斤' : '暂无记录';
+        const initial = u.initial_weight ? mobileEsc(u.initial_weight) + ' 斤' : '--';
+        const faceClass = u.face_enrolled ? 'is-ready' : 'is-missing';
+        const faceText = u.face_enrolled ? '已录人脸' : '待录人脸';
+        return '<article class="mobile-user-card">' +
+            '<div class="mobile-user-main"><div class="mobile-user-avatar">' + name.slice(0, 1) + '</div>' +
+            '<div class="mobile-user-copy"><div><strong>' + name + '</strong><span class="mobile-face-pill ' + faceClass + '">' + faceText + '</span></div>' +
+            '<p>责任教练：' + coach + '</p></div></div>' +
+            '<div class="mobile-user-metrics"><span><small>初始体重</small><strong>' + initial + '</strong></span><span><small>最新体重</small><strong>' + latest + '</strong></span></div>' +
+            '<div class="mobile-user-actions"><a href="/data-table?q=' + encodeURIComponent(u.name || '') + '">查看档案</a>' +
+            '<button type="button" onclick="editUser(' + Number(u.id) + ')">编辑 / 人脸</button>' +
+            '<button type="button" class="danger" onclick="exitUser(' + Number(u.id) + ')">办理出营</button></div></article>';
+    }).join('');
+}
+
+function filterMobileUsers(query) {
+    const keyword = String(query || '').trim().toLowerCase();
+    const users = !keyword ? currentMobileUsers : currentMobileUsers.filter(function(u) {
+        return String(u.name || '').toLowerCase().includes(keyword) || String(u.coach_name || '').toLowerCase().includes(keyword);
+    });
+    renderMobileUserList(users);
+}
+
+function focusMobileStudentSearch() {
+    window.setTimeout(function() {
+        const input = document.getElementById('mobileStudentSearch');
+        if (!input) return;
+        input.scrollIntoView({behavior:'smooth', block:'center'});
+        input.focus();
+    }, 50);
+}
+
+function clearMobileStudentSearch() {
+    const input = document.getElementById('mobileStudentSearch');
+    if (!input) return;
+    input.value = '';
+    filterMobileUsers('');
+    input.focus();
+}
+
+function localDateString(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return year + '-' + month + '-' + day;
+}
+
+async function refreshMobileOverview() {
+    const activeIds = new Set(currentMobileUsers.map(function(u) { return Number(u.id); }));
+    document.getElementById('mobileActiveCount').textContent = currentMobileUsers.length || '0';
+    try {
+        const results = await Promise.all([fetch('/api/all-weights'), fetch('/api/today-extra')]);
+        if (!results[0].ok || !results[1].ok) throw new Error('summary failed');
+        const weightData = await results[0].json();
+        const extraData = await results[1].json();
+        const today = localDateString(new Date());
+        const weighedIds = new Set((weightData.weights || []).filter(function(w) {
+            return w.weigh_date === today && activeIds.has(Number(w.user_id));
+        }).map(function(w) { return Number(w.user_id); }));
+        document.getElementById('mobileWeighedCount').textContent = weighedIds.size;
+        document.getElementById('mobileUnweighedCount').textContent = Math.max(0, activeIds.size - weighedIds.size);
+        document.getElementById('mobileExtraCount').textContent = Array.isArray(extraData) ? extraData.length : 0;
+    } catch (error) {
+        ['mobileWeighedCount','mobileUnweighedCount','mobileExtraCount'].forEach(function(id) {
+            document.getElementById(id).textContent = '--';
+        });
+    }
+}
+
+function renderUserList(users) {
     const tbody = document.getElementById('userTableBody');
-
-    if (!data.users || data.users.length === 0) {
+    currentMobileUsers = users || [];
+    filterMobileUsers(document.getElementById('mobileStudentSearch') ? document.getElementById('mobileStudentSearch').value : '');
+    document.getElementById('mobileActiveCount').textContent = currentMobileUsers.length;
+    if (!users || users.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">暂无学员</td></tr>';
         return;
     }
-
-    tbody.innerHTML = data.users.map((u, i) => {
-        const faceStatus = u.face_image ? '✅ 已录入' : '❌ 未录入';
+    tbody.innerHTML = users.map((u, i) => {
+        const faceStatus = u.face_enrolled ? '✅ 已录入' : '❌ 未录入';
         return '<tr>' +
             '<td>' + (i+1) + '</td>' +
             '<td><strong>' + u.name + '</strong></td>' +
             '<td>' + (u.coach_name || '--') + '</td>' +
-            '<td>' + (u.initial_weight || '--') + ' kg</td>' +
-            '<td>' + (u.latest_weight ? u.latest_weight + ' kg' : '--') + '</td>' +
+            '<td>' + (u.initial_weight || '--') + ' 斤</td>' +
+            '<td>' + (u.latest_weight ? u.latest_weight + ' 斤' : '--') + '</td>' +
             '<td>' + faceStatus + '</td>' +
             '<td>' + (u.created_at || '').slice(0,10) + '</td>' +
             '<td class="action-cell">' +
             '<button class="btn btn-sm" onclick="editUser('+u.id+')">✏️</button> ' +
-            '<button class="btn btn-sm btn-danger" onclick="deleteUser('+u.id+')">🗑️</button>' +
+            '<button class="btn btn-sm btn-primary" onclick="exitUser('+u.id+')">办理出营</button>' +
             '</td>' +
             '</tr>';
     }).join('');
+}
+
+function cacheableUserList(users) {
+    return users.map(function(u) {
+        return {
+            id:u.id, name:u.name, coach_name:u.coach_name,
+            initial_weight:u.initial_weight, latest_weight:u.latest_weight,
+            face_enrolled:u.face_enrolled, created_at:u.created_at
+        };
+    });
+}
+
+// 加载学员列表
+async function loadUsers() {
+    let cacheShown = false;
+    try {
+        const cached = JSON.parse(localStorage.getItem(USER_LIST_CACHE_KEY) || 'null');
+        if (cached && Array.isArray(cached.users) && Date.now() - cached.savedAt < USER_LIST_CACHE_TTL) {
+            renderUserList(cached.users);
+            cacheShown = true;
+        }
+    } catch (e) {
+        localStorage.removeItem(USER_LIST_CACHE_KEY);
+    }
+    try {
+        const resp = await fetch('/api/users?include_face=0');
+        if (!resp.ok) throw new Error('名单加载失败');
+        const data = await resp.json();
+        const users = data.users || [];
+        renderUserList(users);
+        refreshMobileOverview();
+        localStorage.setItem(USER_LIST_CACHE_KEY, JSON.stringify({
+            savedAt: Date.now(), users: cacheableUserList(users)
+        }));
+    } catch (e) {
+        if (!cacheShown) {
+            document.getElementById('userTableBody').innerHTML = '<tr><td colspan="8" class="text-center text-muted">名单加载失败，请刷新重试</td></tr>';
+        }
+    }
 }
 
 // 显示添加弹窗
@@ -220,6 +589,11 @@ async function showAddModal() {
     populateCoachSelect(0);
     document.getElementById('userHeight').value = '';
     document.getElementById('userNote').value = '';
+    document.getElementById('userEnrollDate').value = todayInputValue();
+    document.getElementById('userPeriodCount').value = '1';
+    document.getElementById('userStayEditor').hidden = true;
+    editingAccommodation = null;
+    userAccommodationLoaded = false;
     document.getElementById('enrollPreview').innerHTML = '';
     document.getElementById('enrollStatus').innerHTML = '<span class="text-muted">点击“打开摄像头”开始自动扫脸录入</span>';
     document.getElementById('userModal').style.display = 'flex';
@@ -228,9 +602,9 @@ async function showAddModal() {
 // 编辑学员
 async function editUser(userId) {
     await ensureCoachesLoaded();
-    const resp = await fetch('/api/users');
+    const resp = await fetch('/api/users/' + userId);
     const data = await resp.json();
-    const user = data.users.find(u => u.id === userId);
+    const user = data.user;
     if (!user) return;
 
     capturedFaceImage = null;
@@ -244,6 +618,9 @@ async function editUser(userId) {
     populateCoachSelect(user.coach_id || 0);
     document.getElementById('userHeight').value = user.phone || '';
     document.getElementById('userNote').value = user.note || '';
+    document.getElementById('userEnrollDate').value = (user.enroll_date || user.created_at || '').slice(0,10) || todayInputValue();
+    document.getElementById('userPeriodCount').value = user.period_count || 1;
+    prepareUserAccommodation(user);
 
     if (user.face_image) {
         document.getElementById('enrollPreview').innerHTML =
@@ -265,6 +642,10 @@ async function saveUser() {
 
     const userId = document.getElementById('editUserId').value;
     const coachSel = document.getElementById('userCoachId');
+    const enrollDate = document.getElementById('userEnrollDate').value;
+    const periodCount = parseInt(document.getElementById('userPeriodCount').value) || 0;
+    if (!enrollDate) { alert('请选择入营日期'); return; }
+    if (periodCount < 1) { alert('报名期数必须大于等于1'); return; }
     const body = {
         name: name,
         initial_weight: parseFloat(document.getElementById('userInitWeight').value) || 0,
@@ -272,7 +653,21 @@ async function saveUser() {
         coach_id: coachSel ? parseInt(coachSel.value) || 0 : 0,
         phone: document.getElementById('userHeight').value,
         note: document.getElementById('userNote').value,
+        enroll_date: enrollDate,
+        period_count: periodCount,
     };
+    if (userId && userAccommodationLoaded) {
+        const stayEnabled = document.getElementById('userArrangeStay').checked;
+        const roomId = document.getElementById('userStayRoom').value;
+        if (stayEnabled && !roomId) { alert('请选择具体入住房间'); return; }
+        body.accommodation = {
+            managed: true,
+            enabled: stayEnabled,
+            room_id: stayEnabled ? Number(roomId) : 0,
+            exclusive_use: stayEnabled && document.getElementById('userStayExclusive').checked,
+            contact_phone: document.getElementById('userStayPhone').value.trim()
+        };
+    }
     if (capturedFaceImage) {
         if (!enrollLivenessPassed) {
             alert('❌ 人脸活体未通过，请使用真实人脸重新扫描');
@@ -303,6 +698,11 @@ async function saveUser() {
             // 不关闭弹窗，让用户重新拍照
             return;
         }
+        if (result.accommodation && result.accommodation.changed) {
+            alert(result.accommodation.enabled
+                ? '✅ 学员资料和住宿已保存：'+result.accommodation.room_number+'房'+(result.accommodation.exclusive_use?'（整间独住）':'')
+                : '✅ 学员资料已保存，并已办理退宿');
+        }
         closeModal('userModal');
         loadUsers();
         stopEnrollCamera();
@@ -319,6 +719,10 @@ async function deleteUser(userId) {
     if (!confirm('确定删除该学员? 相关体重记录也会被删除。')) return;
     await fetch('/api/users/' + userId, {method: 'DELETE'});
     loadUsers();
+}
+
+function exitUser(userId) {
+    window.location.href = '/camp-management?exit=' + userId;
 }
 
 // 关闭弹窗
@@ -515,8 +919,11 @@ async function autoCoachEnrollScan() {
 }
 
 document.addEventListener('DOMContentLoaded', async function() {
-    await loadCoaches();
-    loadUsers();
+    const now = new Date();
+    const weekday = ['周日','周一','周二','周三','周四','周五','周六'][now.getDay()];
+    const dateLabel = document.getElementById('mobileHomeDate');
+    if (dateLabel) dateLabel.textContent = (now.getMonth() + 1) + '月' + now.getDate() + '日 · ' + weekday;
+    await Promise.all([loadCoaches(), loadUsers()]);
 });
 
 
@@ -541,24 +948,25 @@ async function loadCoaches() {
     const tbody = document.getElementById('coachTableBody');
     if (!tbody) return;
     if (!data.coaches || data.coaches.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">暂无教练</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">暂无教练</td></tr>';
         return;
     }
-    for (const c of data.coaches) {
-        const statusResp = await fetch('/api/coaches/' + c.id + '/face/status');
-        c.face_status = await statusResp.json();
-    }
     tbody.innerHTML = data.coaches.map(function(c, i) {
-        const faceStatus = c.face_status && c.face_status.enrolled ? '✅ 已录入' : '❌ 未录入';
+        const faceStatus = c.face_enrolled ? '✅ 已录入' : '❌ 未录入';
+        const accountStatus = c.account_role === 'admin'
+            ? '管理员'
+            : (c.account_active ? '正常' : '已停用');
         return '<tr>' +
             '<td>' + (i+1) + '</td>' +
-            '<td><strong>' + c.name + '</strong></td>' +
-            '<td>' + (c.phone || '--') + '</td>' +
+            '<td><strong>' + mobileEsc(c.name) + '</strong></td>' +
+            '<td>' + mobileEsc(c.phone || '--') + '</td>' +
+            '<td>' + mobileEsc(c.username || '--') + '</td>' +
+            '<td>' + accountStatus + (c.password_set ? ' · 有密码' : ' · 人脸登录') + '</td>' +
             '<td>' + faceStatus + '</td>' +
-            '<td>' + (c.created_at || '').slice(0,10) + '</td>' +
+            '<td>' + mobileEsc(c.last_login_at || '尚未登录') + '</td>' +
             '<td class="action-cell">' +
             '<button class="btn btn-sm" onclick="editCoach(' + c.id + ')">✏️</button> ' +
-            '<button class="btn btn-sm btn-danger" onclick="deleteCoach(' + c.id + ')">🗑️</button>' +
+            (c.account_role === 'admin' ? '' : '<button class="btn btn-sm btn-danger" onclick="deleteCoach(' + c.id + ')">🗑️</button>') +
             '</td>' +
             '</tr>';
     }).join('');
@@ -590,6 +998,11 @@ function showAddCoachModal() {
     document.getElementById('editCoachId').value = '';
     document.getElementById('coachName').value = '';
     document.getElementById('coachPhone').value = '';
+    document.getElementById('coachUsername').value = '';
+    document.getElementById('coachPassword').value = '';
+    document.getElementById('coachPasswordLabel').textContent = '初始密码（可不填）';
+    document.getElementById('coachAccountActive').checked = true;
+    document.getElementById('coachAccountActive').disabled = false;
     document.getElementById('coachEnrollPreview').innerHTML = '';
     document.getElementById('coachEnrollStatus').innerHTML = '<span class="text-muted">点击“打开摄像头”开始自动扫脸录入</span>';
     document.getElementById('coachModal').style.display = 'flex';
@@ -599,49 +1012,83 @@ function showAddCoachModal() {
 async function saveCoach() {
     const name = document.getElementById('coachName').value.trim();
     if (!name) { alert('请输入姓名'); return; }
+    const username = document.getElementById('coachUsername').value.trim();
+    if (!username) { alert('请输入独立登录账号'); return; }
+    const accountPassword = document.getElementById('coachPassword').value;
+    if (accountPassword && accountPassword.length < 6) { alert('密码不能少于6位'); return; }
+    const saveBtn = document.getElementById('coachSaveBtn');
+    if (saveBtn.disabled) return;
     const coachId = document.getElementById('editCoachId').value;
     const url = coachId ? '/api/coaches/' + coachId : '/api/coaches';
     const method = coachId ? 'PUT' : 'POST';
-    const resp = await fetch(url, {
-        method: method,
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-            name: name,
-            phone: document.getElementById('coachPhone').value
-        })
-    });
-    if (!resp.ok) {
-        const err = await resp.json();
-        alert(err.error || '保存失败');
-        return;
-    }
-    const result = await resp.json();
-    const savedCoachId = coachId || result.coach_id;
-
-    // 保存教练人脸
-    if (capturedCoachFaceImage && savedCoachId) {
-        if (!coachEnrollLivenessPassed) {
-            alert('❌ 教练人脸活体未通过，请使用真实人脸重新扫描');
-            return;
-        }
-        const faceResp = await fetch('/api/coaches/' + savedCoachId + '/face', {
-            method: 'POST',
+    const originalText = saveBtn.textContent;
+    saveBtn.disabled = true;
+    saveBtn.textContent = '正在保存...';
+    try {
+        const resp = await fetch(url, {
+            method: method,
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({image: capturedCoachFaceImage})
+            body: JSON.stringify({
+                name: name,
+                phone: document.getElementById('coachPhone').value.trim(),
+                username: username,
+                initial_password: coachId ? '' : accountPassword
+            })
         });
-        if (!faceResp.ok) {
-            const err = await faceResp.json();
-            alert('教练信息已保存，但人脸录入失败：' + (err.error || '失败'));
-            return;
-        }
-    }
+        const result = await resp.json().catch(function() { return {}; });
+        if (!resp.ok) throw new Error(result.error || '保存失败，请稍后重试');
+        const savedCoachId = coachId || result.coach_id;
 
-    closeModal('coachModal');
-    stopCoachEnrollCamera();
-    capturedCoachFaceImage = null;
-    coachEnrollLivenessPassed = false;
-    loadCoaches();
-    loadUsers();
+        if (coachId) {
+            saveBtn.textContent = '正在保存账号...';
+            const accountResp = await fetch('/api/coaches/' + savedCoachId + '/account', {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    username: username,
+                    new_password: accountPassword,
+                    is_active: document.getElementById('coachAccountActive').checked
+                })
+            });
+            if (!accountResp.ok) {
+                const err = await accountResp.json().catch(function() { return {}; });
+                throw new Error(err.error || '教练资料已保存，但账号保存失败');
+            }
+        }
+
+        // 保存教练人脸
+        if (capturedCoachFaceImage && savedCoachId) {
+            if (!coachEnrollLivenessPassed) {
+                alert('❌ 教练人脸活体未通过，请使用真实人脸重新扫描');
+                return;
+            }
+            saveBtn.textContent = '正在保存人脸...';
+            const faceResp = await fetch('/api/coaches/' + savedCoachId + '/face', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({image: capturedCoachFaceImage})
+            });
+            if (!faceResp.ok) {
+                const err = await faceResp.json().catch(function() { return {}; });
+                alert('教练信息已保存，但人脸录入失败：' + (err.error || '失败'));
+                return;
+            }
+        }
+
+        closeModal('coachModal');
+        stopCoachEnrollCamera();
+        capturedCoachFaceImage = null;
+        coachEnrollLivenessPassed = false;
+        alert('✅ 教练信息已保存');
+        Promise.all([loadCoaches(), loadUsers()]).catch(function(error) {
+            console.error('刷新教练列表失败', error);
+        });
+    } catch (error) {
+        alert('❌ ' + (error.message || '保存失败，请检查网络后重试'));
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = originalText;
+    }
 }
 
 // 编辑教练
@@ -657,6 +1104,11 @@ async function editCoach(coachId) {
     document.getElementById('editCoachId').value = coach.id;
     document.getElementById('coachName').value = coach.name;
     document.getElementById('coachPhone').value = coach.phone || '';
+    document.getElementById('coachUsername').value = coach.username || '';
+    document.getElementById('coachPassword').value = '';
+    document.getElementById('coachPasswordLabel').textContent = '重置密码（不修改请留空）';
+    document.getElementById('coachAccountActive').checked = !!coach.account_active;
+    document.getElementById('coachAccountActive').disabled = coach.account_role === 'admin';
     const statusResp = await fetch('/api/coaches/' + coachId + '/face/status');
     const status = await statusResp.json();
     if (status.enrolled && status.face_image) {

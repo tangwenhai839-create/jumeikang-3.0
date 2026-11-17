@@ -1,0 +1,329 @@
+{% extends "admin_layout.html" %}
+{% block title %}早晚体重对比 - 聚美康管理中心{% endblock %}
+
+{% block head %}
+<style>
+.wc-page { --wc-red:#df515d; --wc-green:#23866c; --wc-blue:#287f9d; }
+.wc-header {
+    display:flex; align-items:flex-end; justify-content:space-between; gap:18px;
+    min-height:66px; margin-bottom:18px;
+}
+.wc-title h2 { margin:0; color:#173a38; font-size:24px; font-weight:700; letter-spacing:.04em; }
+.wc-title h2::before {
+    content:"JUMEIKANG HEALTH CENTER"; display:block; margin-bottom:6px;
+    color:#35958e; font-size:8px; font-weight:700; letter-spacing:.2em;
+}
+.wc-title h2::after {
+    content:""; display:block; width:46px; height:3px; margin-top:8px;
+    border-radius:3px; background:linear-gradient(90deg,#2b9992,transparent);
+}
+.wc-title p { margin:10px 0 0; color:#718b88; font-size:13px; }
+.wc-toolbar {
+    display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
+    margin-bottom:18px; padding:17px 20px; background:#fff;
+    border:1px solid rgba(28,119,112,.13); border-radius:14px;
+    box-shadow:0 16px 42px rgba(27,93,89,.08),0 1px 0 #fff inset;
+}
+.wc-date-group { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.wc-date-group label { color:#315f5b; font-size:13px; font-weight:700; }
+.wc-date-input {
+    width:160px; min-height:40px; padding:8px 12px; color:#173735;
+    background:#f7fcfb; border:1px solid rgba(28,119,112,.18); border-radius:9px;
+    font:inherit; cursor:pointer;
+}
+.wc-btn {
+    display:inline-flex; align-items:center; justify-content:center; gap:7px;
+    min-height:40px; padding:9px 16px; border:1px solid rgba(26,111,106,.14);
+    border-radius:10px; font-size:13px; font-weight:700; cursor:pointer;
+    transition:transform .18s ease,box-shadow .18s ease,background-color .18s ease;
+}
+.wc-btn:hover { transform:translateY(-1px); }
+.wc-btn-secondary { color:#286c67; background:#edf8f6; }
+.wc-btn-secondary:hover { background:#e0f2ef; }
+.wc-btn-primary {
+    color:#f5fffd; background:linear-gradient(135deg,#258b84,#176964);
+    border-color:rgba(21,100,95,.32); box-shadow:0 10px 22px rgba(24,108,102,.16);
+}
+.wc-btn-primary:hover { background:linear-gradient(135deg,#31a097,#1c7973); }
+.wc-summary { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; margin-bottom:18px; }
+.wc-stat {
+    position:relative; overflow:hidden; display:flex; align-items:center; gap:14px;
+    min-height:112px; padding:20px; background:linear-gradient(145deg,#fff,#f8fcfb);
+    border:1px solid rgba(28,119,112,.13); border-radius:15px;
+    box-shadow:0 14px 34px rgba(27,93,89,.075);
+}
+.wc-stat::after {
+    content:""; position:absolute; right:-24px; bottom:-34px; width:96px; height:96px;
+    border-radius:50%; background:rgba(43,153,146,.07);
+}
+.wc-stat-icon {
+    flex:none; display:grid; place-items:center; width:52px; height:52px;
+    border-radius:50%; color:#237d76; background:#e4f5f1; font-size:24px; font-weight:700;
+}
+.wc-stat-red .wc-stat-icon { color:var(--wc-red); background:#fff0f1; }
+.wc-stat-green .wc-stat-icon { color:var(--wc-green); background:#e9f7f1; }
+.wc-stat-blue .wc-stat-icon { color:var(--wc-blue); background:#eaf4f8; }
+.wc-stat-copy { position:relative; z-index:1; }
+.wc-stat-label { display:block; margin-bottom:5px; color:#587572; font-size:13px; font-weight:700; }
+.wc-stat-value { color:#175f5a; font-size:29px; font-weight:800; font-variant-numeric:tabular-nums; }
+.wc-stat-red .wc-stat-value { color:var(--wc-red); }
+.wc-stat-green .wc-stat-value { color:var(--wc-green); }
+.wc-stat-blue .wc-stat-value { color:var(--wc-blue); }
+.wc-stat-unit { margin-left:3px; font-size:13px; font-weight:700; }
+.wc-card {
+    overflow:hidden; background:#fff; border:1px solid rgba(28,119,112,.13);
+    border-radius:15px; box-shadow:0 16px 42px rgba(27,93,89,.08);
+}
+.wc-card-head {
+    display:flex; align-items:center; justify-content:space-between; gap:14px;
+    min-height:62px; padding:16px 20px; border-bottom:1px solid rgba(28,119,112,.1);
+    background:linear-gradient(90deg,rgba(54,164,154,.075),rgba(255,255,255,.2) 58%,transparent);
+}
+.wc-card-head h3 { margin:0; color:#194844; font-size:16px; letter-spacing:.035em; }
+.wc-card-head span { color:#718b88; font-size:12px; }
+.wc-table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+.wc-table { width:100%; min-width:790px; border-collapse:collapse; }
+.wc-table th {
+    height:48px; padding:11px 16px; color:#276f6a; background:#edf8f6;
+    border-bottom:1px solid rgba(30,121,114,.14); font-size:13px; font-weight:750; text-align:left;
+}
+.wc-table td {
+    height:58px; padding:11px 16px; color:#355956;
+    border-bottom:1px solid rgba(28,119,112,.09); font-size:13px; font-weight:600;
+}
+.wc-table tbody tr:last-child td { border-bottom:0; }
+.wc-table tbody tr:hover td { background:#f4faf8; }
+.wc-student { display:flex; align-items:center; gap:10px; color:#1e4d49; font-weight:750; }
+.wc-avatar {
+    display:grid; place-items:center; width:34px; height:34px; border-radius:50%;
+    color:#fff; background:linear-gradient(145deg,#4aaba3,#20776f); font-size:13px;
+}
+.wc-number { font-variant-numeric:tabular-nums; white-space:nowrap; }
+.wc-diff { display:inline-flex; align-items:center; gap:7px; font-size:15px; font-weight:800; white-space:nowrap; }
+.wc-diff-arrow { font-size:23px; line-height:1; }
+.wc-diff.higher { color:var(--wc-red); }
+.wc-diff.lower { color:var(--wc-green); }
+.wc-diff.same,.wc-diff.pending { color:#879b98; }
+.wc-status {
+    display:inline-flex; align-items:center; min-height:28px; padding:5px 10px;
+    border-radius:999px; font-size:12px; font-weight:750; white-space:nowrap;
+}
+.wc-status.higher { color:#b73f49; background:#ffebed; }
+.wc-status.lower { color:#1d765d; background:#e5f5ed; }
+.wc-status.same { color:#446d69; background:#e8f2f1; }
+.wc-status.pending { color:#776f69; background:#f0eeec; }
+.wc-empty,.wc-loading { padding:54px 20px; color:#78918e; text-align:center; }
+.wc-loading::before {
+    content:""; display:inline-block; width:22px; height:22px; margin-right:9px;
+    vertical-align:middle; border:3px solid #dbeae7; border-top-color:#258b84;
+    border-radius:50%; animation:wc-spin .8s linear infinite;
+}
+@keyframes wc-spin { to { transform:rotate(360deg); } }
+.wc-note { padding:14px 20px; color:#6d8582; background:#f8fcfb; border-top:1px solid rgba(28,119,112,.09); font-size:12px; }
+.wc-error { color:#b73f49; }
+
+@media (max-width:1050px) {
+    .wc-summary { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media (max-width:768px) {
+    .wc-header { align-items:stretch; min-height:0; margin-bottom:14px; }
+    .wc-title h2 { font-size:21px; }
+    .wc-toolbar { align-items:stretch; padding:14px; gap:12px; }
+    .wc-date-group { display:grid; grid-template-columns:1fr auto; width:100%; }
+    .wc-date-group label { grid-column:1 / -1; }
+    .wc-date-input { width:100%; min-width:0; min-height:44px; font-size:16px; }
+    .wc-toolbar-actions { display:grid; grid-template-columns:1fr 1fr; gap:9px; width:100%; }
+    .wc-btn { min-height:44px; padding:9px 11px; }
+    .wc-summary { gap:10px; }
+    .wc-stat { min-height:92px; padding:14px 12px; gap:10px; }
+    .wc-stat-icon { width:42px; height:42px; font-size:20px; }
+    .wc-stat-value { font-size:24px; }
+    .wc-card-head { align-items:flex-start; flex-direction:column; padding:14px; }
+    .wc-table th,.wc-table td { padding:10px 13px; }
+    .wc-note { padding:13px 14px; }
+}
+@media (max-width:430px) {
+    .wc-summary { grid-template-columns:1fr 1fr; }
+    .wc-stat { display:block; min-height:102px; }
+    .wc-stat-icon { width:36px; height:36px; margin-bottom:8px; font-size:18px; }
+    .wc-stat-label { font-size:12px; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="wc-page">
+    <header class="wc-header">
+        <div class="wc-title">
+            <h2>当日早晚体重对比</h2>
+            <p>对比在营学员当天早上与晚上的称重变化</p>
+        </div>
+    </header>
+
+    <div class="wc-toolbar">
+        <div class="wc-date-group">
+            <label for="comparisonDate">选择日期</label>
+            <input id="comparisonDate" class="wc-date-input" type="date" value="{{ today }}">
+            <button class="wc-btn wc-btn-secondary" type="button" onclick="selectToday()">今天</button>
+        </div>
+        <div class="wc-toolbar-actions">
+            <button class="wc-btn wc-btn-secondary" type="button" onclick="loadComparison()">↻ 刷新</button>
+            <button class="wc-btn wc-btn-primary" id="exportButton" type="button" onclick="exportComparison()">⇩ 导出当日数据</button>
+        </div>
+    </div>
+
+    <div class="wc-summary" aria-label="当日称重汇总">
+        <article class="wc-stat">
+            <div class="wc-stat-icon" aria-hidden="true">✓</div>
+            <div class="wc-stat-copy"><span class="wc-stat-label">已完成对比</span><strong class="wc-stat-value" id="completedCount">—</strong><span class="wc-stat-unit">人</span></div>
+        </article>
+        <article class="wc-stat wc-stat-red">
+            <div class="wc-stat-icon" aria-hidden="true">↗</div>
+            <div class="wc-stat-copy"><span class="wc-stat-label">晚上增重</span><strong class="wc-stat-value" id="higherCount">—</strong><span class="wc-stat-unit">人</span></div>
+        </article>
+        <article class="wc-stat wc-stat-green">
+            <div class="wc-stat-icon" aria-hidden="true">↘</div>
+            <div class="wc-stat-copy"><span class="wc-stat-label">晚上减重</span><strong class="wc-stat-value" id="lowerCount">—</strong><span class="wc-stat-unit">人</span></div>
+        </article>
+        <article class="wc-stat wc-stat-blue">
+            <div class="wc-stat-icon" aria-hidden="true">◷</div>
+            <div class="wc-stat-copy"><span class="wc-stat-label">待完成称重</span><strong class="wc-stat-value" id="pendingCount">—</strong><span class="wc-stat-unit">人</span></div>
+        </article>
+    </div>
+
+    <div class="wc-card">
+        <div class="wc-card-head">
+            <h3>学员早晚称重明细</h3>
+            <span id="resultDescription">正在加载当日数据…</span>
+        </div>
+        <div class="wc-table-wrap" id="tableContainer">
+            <div class="wc-loading">正在读取称重数据…</div>
+        </div>
+        <div class="wc-note">差额 = 晚上体重 − 早上体重；晚上高于早上显示红色向上箭头，低于早上显示绿色向下箭头。</div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+var comparisonRows = [];
+var comparisonDateValue = '{{ today }}';
+
+function escapeHtml(value) {
+    return String(value == null ? '' : value).replace(/[&<>'"]/g, function(char) {
+        return {'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char];
+    });
+}
+
+function formatNumber(value) {
+    if (value === null || value === undefined || value === '') return '—';
+    var number = Number(value);
+    if (!Number.isFinite(number)) return '—';
+    return number.toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
+}
+
+function formatWeight(value) {
+    return value === null || value === undefined ? '—' : formatNumber(value) + ' 斤';
+}
+
+function statusPresentation(row) {
+    if (row.status === 'higher') return {cls:'higher', arrow:'↑', diff:'+' + formatNumber(row.difference) + ' 斤', label:'晚上较重'};
+    if (row.status === 'lower') return {cls:'lower', arrow:'↓', diff:formatNumber(row.difference) + ' 斤', label:'晚上较轻'};
+    if (row.status === 'same') return {cls:'same', arrow:'→', diff:'0 斤', label:'早晚持平'};
+    if (row.status === 'missing_morning') return {cls:'pending', arrow:'', diff:'—', label:'待早间称重'};
+    if (row.status === 'missing_evening') return {cls:'pending', arrow:'', diff:'—', label:'待晚间称重'};
+    return {cls:'pending', arrow:'', diff:'—', label:'今日未称重'};
+}
+
+function renderRows(rows) {
+    var container = document.getElementById('tableContainer');
+    if (!rows.length) {
+        container.innerHTML = '<div class="wc-empty">暂无在营学员数据</div>';
+        return;
+    }
+    var html = '<table class="wc-table"><thead><tr>' +
+        '<th>学员</th><th>教练</th><th>早上体重</th><th>晚上体重</th><th>早晚差额</th><th>状态</th>' +
+        '</tr></thead><tbody>';
+    rows.forEach(function(row) {
+        var view = statusPresentation(row);
+        var initial = (row.name || '学').trim().slice(0, 1) || '学';
+        html += '<tr>' +
+            '<td><div class="wc-student"><span class="wc-avatar">' + escapeHtml(initial) + '</span><span>' + escapeHtml(row.name) + '</span></div></td>' +
+            '<td>' + escapeHtml(row.coach_name || '未分配') + '</td>' +
+            '<td class="wc-number">' + formatWeight(row.morning_weight) + '</td>' +
+            '<td class="wc-number">' + formatWeight(row.evening_weight) + '</td>' +
+            '<td><span class="wc-diff ' + view.cls + '"><span class="wc-diff-arrow" aria-hidden="true">' + view.arrow + '</span>' + view.diff + '</span></td>' +
+            '<td><span class="wc-status ' + view.cls + '">' + view.label + '</span></td>' +
+            '</tr>';
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+async function loadComparison() {
+    var dateInput = document.getElementById('comparisonDate');
+    var selectedDate = dateInput.value;
+    if (!selectedDate) return;
+    var container = document.getElementById('tableContainer');
+    container.innerHTML = '<div class="wc-loading">正在读取称重数据…</div>';
+    document.getElementById('exportButton').disabled = true;
+    try {
+        var response = await fetch('/api/weight-comparison?date=' + encodeURIComponent(selectedDate));
+        var data = await response.json();
+        if (!response.ok) throw new Error(data.error || '读取失败');
+        comparisonRows = data.students || [];
+        comparisonDateValue = data.date;
+        document.getElementById('completedCount').textContent = data.summary.completed;
+        document.getElementById('higherCount').textContent = data.summary.higher;
+        document.getElementById('lowerCount').textContent = data.summary.lower;
+        document.getElementById('pendingCount').textContent = data.summary.pending;
+        var sameText = data.summary.same ? '，持平 ' + data.summary.same + ' 人' : '';
+        document.getElementById('resultDescription').textContent = data.date + ' · 共 ' + data.summary.total + ' 名在营学员' + sameText;
+        renderRows(comparisonRows);
+    } catch (error) {
+        comparisonRows = [];
+        container.innerHTML = '<div class="wc-empty wc-error">加载失败：' + escapeHtml(error.message) + '</div>';
+        document.getElementById('resultDescription').textContent = '数据加载失败';
+    } finally {
+        document.getElementById('exportButton').disabled = comparisonRows.length === 0;
+    }
+}
+
+function selectToday() {
+    document.getElementById('comparisonDate').value = '{{ today }}';
+    loadComparison();
+}
+
+function csvCell(value) {
+    var text = String(value == null ? '' : value).replace(/"/g, '""');
+    return '"' + text + '"';
+}
+
+function exportComparison() {
+    if (!comparisonRows.length) return;
+    var lines = [['日期','学员','教练','早上体重(斤)','晚上体重(斤)','早晚差额(斤)','状态']];
+    comparisonRows.forEach(function(row) {
+        var view = statusPresentation(row);
+        lines.push([
+            comparisonDateValue, row.name, row.coach_name || '未分配',
+            row.morning_weight == null ? '' : formatNumber(row.morning_weight),
+            row.evening_weight == null ? '' : formatNumber(row.evening_weight),
+            row.difference == null ? '' : formatNumber(row.difference), view.label
+        ]);
+    });
+    var csv = '\ufeff' + lines.map(function(line) { return line.map(csvCell).join(','); }).join('\r\n');
+    var blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement('a');
+    link.href = url;
+    link.download = '聚美康早晚体重对比_' + comparisonDateValue + '.csv';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+}
+
+document.getElementById('comparisonDate').addEventListener('change', loadComparison);
+loadComparison();
+</script>
+{% endblock %}

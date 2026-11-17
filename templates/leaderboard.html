@@ -4,7 +4,7 @@
 {% block content %}
 <div class="leaderboard-container">
     <div class="lb-header">
-        <h1>🏆 排行榜</h1>
+        <h1>排行榜</h1>
         <div class="lb-controls">
             <select id="lbPeriod" onchange="loadLeaderboard()" class="lb-select">
                 <option value="week">本周</option>
@@ -52,7 +52,7 @@ async function loadLeaderboard() {
             '<div class="podium-medal">' + medals[i] + '</div>' +
             '<div class="podium-name">' + r.name + '</div>' +
             '<div class="podium-rate">' + rateStr + '</div>' +
-            '<div class="podium-weight">' + r.first_weight + ' → ' + r.last_weight + ' kg</div>' +
+            '<div class="podium-weight">' + r.first_weight + ' → ' + r.last_weight + ' 斤</div>' +
             '</div>';
     }).join('');
     grid.appendChild(podium);

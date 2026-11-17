@@ -12,7 +12,20 @@ sdk/win64/
 sdk/__pycache__/
 
 # 数据库 (用户敏感数据)
-db/weight.db
+db/
+*.db
+*.sqlite*
+*.pem
+*.key
+*.dat
+.env
+.env.*
+!.env.example
+node_modules/
+dist/
+dist-admin/
+*.tsbuildinfo
+static/downloads/
 db/*.db-journal
 db/*.db-wal
 db/*.db-shm

@@ -1,0 +1,637 @@
+{% extends "admin_layout.html" %}
+{% block title %}出入营管理 - 体重管理系统{% endblock %}
+
+{% block head %}
+<style>
+.camp-page { display: grid; gap: 18px; }
+.camp-summary { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 12px; }
+.camp-summary-card { padding: 18px; border-radius: 15px; background: #fff; border: 1px solid rgba(28,119,112,.12); box-shadow: 0 10px 28px rgba(27,93,89,.07); }
+.camp-summary-card span { display:block; color:#718b88; font-size:12px; margin-bottom:6px; }
+.camp-summary-card b { color:#1d625d; font-size:28px; font-variant-numeric:tabular-nums; }
+.camp-grid { display:grid; grid-template-columns:minmax(340px,.8fr) minmax(0,1.2fr); gap:18px; align-items:start; }
+.camp-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.camp-form-grid .full { grid-column:1 / -1; }
+.camp-face-box { padding:12px; border:1px dashed rgba(28,119,112,.28); border-radius:12px; background:#f6fbfa; }
+.camp-face-box video { display:none; width:100%; max-height:260px; object-fit:cover; border-radius:10px; background:#10201d; }
+.camp-face-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+.camp-face-preview img { width:90px; height:110px; object-fit:cover; border-radius:10px; margin-top:10px; }
+.camp-help { color:#78918e; font-size:12px; line-height:1.6; }
+.camp-lists { display:grid; gap:16px; }
+.camp-search-bar { display:flex; align-items:center; gap:9px; padding:12px 14px; border-radius:14px; background:#fff; border:1px solid rgba(28,119,112,.14); box-shadow:0 8px 24px rgba(27,93,89,.06); }
+.camp-search-label { flex:none; color:#1d625d; font-size:13px; font-weight:700; }
+.camp-search-wrap { position:relative; flex:1; min-width:0; }
+.camp-search-wrap::before { content:'⌕'; position:absolute; left:13px; top:50%; transform:translateY(-52%); color:#5e8884; font-size:21px; pointer-events:none; }
+.camp-search-input { width:100%; min-height:42px; padding:9px 42px 9px 39px; border:1px solid rgba(28,119,112,.22); border-radius:10px; outline:none; color:#244b48; background:#f8fcfb; font-size:14px; transition:.2s; }
+.camp-search-input:focus { border-color:#258f87; box-shadow:0 0 0 3px rgba(37,143,135,.10); background:#fff; }
+.camp-search-clear { position:absolute; right:7px; top:50%; transform:translateY(-50%); width:30px; height:30px; border:0; border-radius:8px; color:#668581; background:transparent; cursor:pointer; font-size:18px; }
+.camp-search-clear:hover { color:#176d67; background:#e9f5f3; }
+.camp-search-tip { flex:none; color:#829895; font-size:12px; }
+.camp-list-head { display:flex; justify-content:space-between; align-items:center; gap:10px; }
+.camp-count { padding:3px 9px; border-radius:999px; color:#1c756f; background:#e9f7f4; font-size:12px; }
+.camp-status { display:inline-flex; padding:4px 9px; border-radius:999px; font-size:12px; font-weight:700; }
+.camp-status.active { color:#14745e; background:#e3f7ef; }
+.camp-status.exited { color:#756a63; background:#f0ece8; }
+.camp-empty { padding:34px 14px; text-align:center; color:#849895; }
+.camp-exit-note { max-width:220px; white-space:normal; color:#6d817e; font-size:12px; }
+.camp-action-row { display:flex; gap:6px; flex-wrap:wrap; }
+.camp-modal-name { padding:10px 12px; margin-bottom:12px; border-radius:9px; color:#1d625d; background:#edf8f6; font-weight:700; }
+.camp-stay-panel { padding:14px; border:1px solid rgba(28,119,112,.18); border-radius:13px; background:linear-gradient(145deg,#f4fbf9,#fff); }
+.camp-stay-toggle { display:flex; align-items:flex-start; gap:10px; cursor:pointer; }
+.camp-stay-toggle input { width:20px; height:20px; margin:1px 0 0; accent-color:#1f8279; }
+.camp-stay-toggle strong { display:block; color:#1d625d; font-size:14px; }
+.camp-stay-toggle small { display:block; margin-top:3px; color:#78918e; font-size:11px; line-height:1.5; }
+.camp-stay-options { display:grid; grid-template-columns:1fr 1fr; gap:11px; padding-top:14px; margin-top:12px; border-top:1px dashed rgba(28,119,112,.2); }
+.camp-stay-options .full { grid-column:1 / -1; }
+.camp-stay-status { padding:10px 11px; border-radius:10px; color:#567a75; background:#eaf6f3; font-size:12px; line-height:1.55; }
+.camp-stay-status.is-error { color:#9b4e47; background:#fff0ed; }
+.camp-stay-status.is-ready { color:#176b5b; background:#e2f6ee; }
+@media (max-width:1000px) { .camp-grid { grid-template-columns:1fr; } }
+@media (max-width:768px) {
+    .camp-page { gap:12px; }
+    .camp-summary { grid-template-columns:1fr 1fr; gap:8px; }
+    .camp-summary-card { padding:14px 12px; }
+    .camp-summary-card b { font-size:23px; }
+    .camp-form-grid { grid-template-columns:1fr; }
+    .camp-form-grid .full { grid-column:auto; }
+    .camp-stay-options { grid-template-columns:1fr; }
+    .camp-stay-options .full { grid-column:auto; }
+    .camp-face-actions .btn { flex:1 1 130px; }
+    .camp-search-bar { align-items:stretch; flex-direction:column; gap:7px; padding:11px; }
+    .camp-search-label { padding-left:2px; }
+    .camp-search-tip { display:none; }
+    .camp-list-head { align-items:flex-start; flex-direction:column; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="camp-page">
+    <div class="page-header">
+        <div>
+            <h2>出入营管理</h2>
+            <p class="text-muted" style="margin-top:6px">入营完成建档，出营保留全部历史并移入独立档案</p>
+        </div>
+    </div>
+
+    <section class="camp-summary">
+        <div class="camp-summary-card"><span>当前在营</span><b id="activeCount">0</b></div>
+        <div class="camp-summary-card"><span>待下一期入营</span><b id="pendingCount">0</b></div>
+        <div class="camp-summary-card"><span>已出营档案</span><b id="exitedCount">0</b></div>
+        <div class="camp-summary-card"><span>今日入营</span><b id="todayEnterCount">0</b></div>
+        <div class="camp-summary-card"><span>今日出营</span><b id="todayExitCount">0</b></div>
+    </section>
+
+    <div class="camp-grid">
+        <section class="card">
+            <div class="card-header"><h3>办理入营 · 完成建档</h3></div>
+            <div class="card-body">
+                <form id="entryForm" onsubmit="submitEntry(event)">
+                    <div class="camp-form-grid">
+                        <div class="form-group">
+                            <label>姓名 *</label>
+                            <input id="entryName" class="form-input" required maxlength="50">
+                        </div>
+                        <div class="form-group">
+                            <label>身高/cm *</label>
+                            <input id="entryHeight" class="form-input" type="number" min="100" max="250" step="0.1" required>
+                        </div>
+                        <div class="form-group">
+                            <label>初始体重/斤 *</label>
+                            <input id="entryInitialWeight" class="form-input" type="number" min="20" max="600" step="0.1" required>
+                        </div>
+                        <div class="form-group">
+                            <label>体测体重/斤 *</label>
+                            <input id="entryTiceWeight" class="form-input" type="number" min="20" max="600" step="0.1" required>
+                        </div>
+                        <div class="form-group">
+                            <label>入营日期 *</label>
+                            <input id="entryDate" class="form-input" type="date" required>
+                        </div>
+                        <div class="form-group">
+                            <label>报名总期数 *</label>
+                            <input id="entryPeriod" class="form-input" type="number" min="1" max="99" value="1" required>
+                            <small class="camp-help">系统会自动生成对应数量的期次，后续期次暂时保持待安排。</small>
+                        </div>
+                        <div class="form-group full">
+                            <label>责任教练 *</label>
+                            <select id="entryCoach" class="form-select" required><option value="">请选择责任教练</option></select>
+                        </div>
+                        <div class="form-group full">
+                            <label>档案备注</label>
+                            <textarea id="entryNote" class="form-input" rows="3" maxlength="500" placeholder="可填写身体情况、特殊安排等"></textarea>
+                        </div>
+                        <div class="form-group full">
+                            <div class="camp-stay-panel">
+                                <label class="camp-stay-toggle" for="entryArrangeStay">
+                                    <input id="entryArrangeStay" type="checkbox" onchange="toggleAccommodationFields()">
+                                    <span><strong>同时安排入住宿舍</strong><small>可直接搜索房间；空调和房型仅用于筛选。需要一个人住整间多人房时，可勾选“整间独住”。</small></span>
+                                </label>
+                                <div class="camp-stay-options" id="entryStayOptions" hidden>
+                                    <div class="form-group">
+                                        <label>空调条件（可选筛选）</label>
+                                        <select id="entryStayAir" class="form-select" onchange="refreshAccommodationAvailability()" disabled>
+                                            <option value="">全部房间</option>
+                                            <option value="true">空调房</option>
+                                            <option value="false">非空调房</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>房型（可选筛选）</label>
+                                        <select id="entryStayType" class="form-select" onchange="refreshAccommodationAvailability()" disabled>
+                                            <option value="">全部房型</option>
+                                            <option value="SINGLE">单人间</option>
+                                            <option value="DOUBLE">双人间</option>
+                                            <option value="TRIPLE">三人间</option>
+                                            <option value="QUAD">四人间</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group full">
+                                        <label>搜索房间号</label>
+                                        <input id="entryStaySearch" class="form-input" type="search" autocomplete="off" placeholder="例如 A426、302" oninput="scheduleAccommodationRefresh()" disabled>
+                                    </div>
+                                    <div class="form-group full">
+                                        <label>选择入住房间 *</label>
+                                        <select id="entryStayRoom" class="form-select" disabled>
+                                            <option value="">正在读取可入住房间</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group full">
+                                        <label class="camp-stay-toggle" for="entryStayExclusive">
+                                            <input id="entryStayExclusive" type="checkbox" onchange="refreshAccommodationAvailability()" disabled>
+                                            <span><strong>整间独住</strong><small>只显示当前无人入住的房间；入住后该房间立即显示已满，直到学员退宿或出营。</small></span>
+                                        </label>
+                                    </div>
+                                    <div class="form-group full">
+                                        <label>住宿联系电话</label>
+                                        <input id="entryStayPhone" class="form-input" type="tel" maxlength="20" placeholder="可选，仅保存到住宿登记">
+                                    </div>
+                                    <div class="camp-stay-status full" id="entryStayStatus">勾选后会直接列出所有可入住房间。</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group full">
+                            <label>学员人脸</label>
+                            <div class="camp-face-box">
+                                <video id="entryVideo" autoplay playsinline></video>
+                                <canvas id="entryCanvas" style="display:none"></canvas>
+                                <div class="camp-face-actions">
+                                    <button type="button" class="btn btn-secondary" onclick="startEntryCamera()">打开摄像头</button>
+                                    <button type="button" class="btn btn-secondary" onclick="resetEntryFace()">重新扫描</button>
+                                </div>
+                                <div id="entryFaceStatus" class="camp-help" style="margin-top:8px">建议入营时完成人脸录入；暂时无法拍摄时也可先建档，之后补录。</div>
+                                <div id="entryFacePreview" class="camp-face-preview"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <button id="entrySubmit" class="btn btn-primary btn-large" type="submit">确认入营并完成建档</button>
+                </form>
+            </div>
+        </section>
+
+        <div class="camp-lists">
+            <div class="camp-search-bar">
+                <label class="camp-search-label" for="campSearch">搜索学员</label>
+                <div class="camp-search-wrap">
+                    <input id="campSearch" class="camp-search-input" type="search" autocomplete="off"
+                           placeholder="输入姓名、责任教练、日期或期数" oninput="filterCampLists()">
+                    <button class="camp-search-clear" type="button" aria-label="清空搜索" title="清空搜索" onclick="clearCampSearch()">×</button>
+                </div>
+                <span class="camp-search-tip">同时搜索在营、待下一期和全部完成档案</span>
+            </div>
+            <section class="card">
+                <div class="card-header camp-list-head"><h3>在营学员</h3><span class="camp-count" id="activeBadge">0人</span></div>
+                <div class="card-body" style="padding-top:8px">
+                    <div class="table-wrapper">
+                        <table class="ranking-table">
+                            <thead><tr><th>姓名</th><th>入营日期</th><th>期数</th><th>责任教练</th><th>体测体重</th><th>最新体重</th><th>操作</th></tr></thead>
+                            <tbody id="activeBody"><tr><td colspan="7" class="camp-empty">加载中...</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <section class="card">
+                <div class="card-header camp-list-head"><h3>待下一期入营</h3><span class="camp-count" id="pendingBadge">0人</span></div>
+                <div class="card-body" style="padding-top:8px">
+                    <div class="table-wrapper">
+                        <table class="ranking-table">
+                            <thead><tr><th>姓名</th><th>报名进度</th><th>上一期出营</th><th>下一期</th><th>最新体重</th><th>操作</th></tr></thead>
+                            <tbody id="pendingBody"><tr><td colspan="6" class="camp-empty">加载中...</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <section class="card">
+                <div class="card-header camp-list-head"><h3>已出营档案</h3><span class="camp-count" id="exitedBadge">0人</span></div>
+                <div class="card-body" style="padding-top:8px">
+                    <div class="table-wrapper">
+                        <table class="ranking-table">
+                            <thead><tr><th>姓名</th><th>入营日期</th><th>出营日期</th><th>责任教练</th><th>最终体重</th><th>出营说明</th><th>操作</th></tr></thead>
+                            <tbody id="exitedBody"><tr><td colspan="7" class="camp-empty">加载中...</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="exitModal">
+    <div class="modal-content" style="max-width:460px">
+        <div class="modal-header"><h3>办理出营</h3><button class="modal-close" onclick="closeExitModal()">&times;</button></div>
+        <div class="modal-body">
+            <input type="hidden" id="exitUserId">
+            <div class="camp-modal-name" id="exitUserName"></div>
+            <div class="form-group"><label>出营日期 *</label><input type="date" id="exitDate" class="form-input" required></div>
+            <div class="form-group"><label>出营说明</label><textarea id="exitNote" class="form-input" rows="4" maxlength="500" placeholder="可填写结营情况、后续安排等"></textarea></div>
+            <p class="camp-help">办理后完成当前这一期并释放宿舍；如有剩余期数，将自动进入“待下一期入营”。历史数据不会删除。</p>
+        </div>
+        <div class="modal-footer"><button class="btn btn-secondary" onclick="closeExitModal()">取消</button><button class="btn btn-primary" onclick="confirmExit()">确认出营</button></div>
+    </div>
+</div>
+
+<div class="modal" id="nextEntryModal">
+    <div class="modal-content" style="max-width:520px">
+        <div class="modal-header"><h3>办理下一期入营</h3><button class="modal-close" onclick="closeNextEntryModal()">&times;</button></div>
+        <div class="modal-body">
+            <input type="hidden" id="nextEntryUserId">
+            <div class="camp-modal-name" id="nextEntryUserName"></div>
+            <p class="camp-help" id="nextEntryProgress" style="margin-bottom:14px"></p>
+            <div class="camp-form-grid">
+                <div class="form-group"><label>本期入营日期 *</label><input type="date" id="nextEntryDate" class="form-input" required></div>
+                <div class="form-group"><label>责任教练 *</label><select id="nextEntryCoach" class="form-select" required></select></div>
+                <div class="form-group"><label>本期初始体重/斤 *</label><input type="number" id="nextEntryInitial" min="20" max="600" step="0.1" class="form-input" required></div>
+                <div class="form-group"><label>本期体测体重/斤 *</label><input type="number" id="nextEntryTice" min="20" max="600" step="0.1" class="form-input" required></div>
+            </div>
+            <p class="camp-help">提交后只启动下一期，不会覆盖之前期次。需要住宿时，可随后在学员资料中选择房间。</p>
+        </div>
+        <div class="modal-footer"><button class="btn btn-secondary" onclick="closeNextEntryModal()">取消</button><button class="btn btn-primary" onclick="confirmNextEntry()">确认下一期入营</button></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+var campUsers=[];
+var campCoaches=[];
+var entryStream=null;
+var entryScanTimer=null;
+var entryFaceImage='';
+var entryFaceHits=0;
+var accommodationAvailabilityRequest=0;
+var accommodationSearchTimer=null;
+
+function campEsc(value) {
+    return String(value == null ? '' : value).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function todayStr() {
+    var now = new Date();
+    var month = String(now.getMonth() + 1).padStart(2, '0');
+    var day = String(now.getDate()).padStart(2, '0');
+    return now.getFullYear() + '-' + month + '-' + day;
+}
+function userEnrollDate(u) { return (u.enroll_date || u.created_at || '').slice(0,10); }
+
+function toggleAccommodationFields() {
+    var enabled=document.getElementById('entryArrangeStay').checked;
+    var options=document.getElementById('entryStayOptions');
+    var air=document.getElementById('entryStayAir');
+    var type=document.getElementById('entryStayType');
+    var search=document.getElementById('entryStaySearch');
+    var exclusive=document.getElementById('entryStayExclusive');
+    var room=document.getElementById('entryStayRoom');
+    options.hidden=!enabled;
+    air.disabled=!enabled; type.disabled=!enabled; search.disabled=!enabled; exclusive.disabled=!enabled;
+    room.required=enabled;
+    if (enabled) refreshAccommodationAvailability();
+    else {
+        room.disabled=true;
+        room.innerHTML='<option value="">勾选住宿后选择房间</option>';
+    }
+}
+
+function scheduleAccommodationRefresh() {
+    if (accommodationSearchTimer) clearTimeout(accommodationSearchTimer);
+    accommodationSearchTimer=setTimeout(refreshAccommodationAvailability,250);
+}
+
+async function refreshAccommodationAvailability() {
+    var enabled=document.getElementById('entryArrangeStay').checked;
+    if (!enabled) return;
+    var requestId=++accommodationAvailabilityRequest;
+    var air=document.getElementById('entryStayAir').value;
+    var type=document.getElementById('entryStayType').value;
+    var keyword=document.getElementById('entryStaySearch').value.trim();
+    var exclusive=document.getElementById('entryStayExclusive').checked;
+    var roomSelect=document.getElementById('entryStayRoom');
+    var status=document.getElementById('entryStayStatus');
+    status.className='camp-stay-status full';
+    status.textContent='正在查询符合条件的房间...';
+    var previousRoom=roomSelect.value;
+    roomSelect.disabled=true;
+    roomSelect.innerHTML='<option value="">正在查询可入住房间...</option>';
+    try {
+        var query=[];
+        if (type) query.push('roomType='+encodeURIComponent(type));
+        if (air!=='') query.push('hasAirConditioner='+encodeURIComponent(air));
+        if (keyword) query.push('keyword='+encodeURIComponent(keyword));
+        var resp=await fetch('/accommodation-api/rooms'+(query.length?'?'+query.join('&'):''));
+        var rooms=await resp.json();
+        if (!resp.ok) throw new Error(rooms.message||'查询失败');
+        if (requestId!==accommodationAvailabilityRequest) return;
+        var available=(Array.isArray(rooms)?rooms:[]).filter(function(room){return Number(room.availableCount)>0 && room.status!=='FULL';});
+        if (exclusive) available=available.filter(function(room){return Number(room.occupiedCount||0)===0;});
+        var beds=available.reduce(function(sum,room){return sum+Number(room.availableCount||0);},0);
+        if (!available.length) {
+            status.className='camp-stay-status full is-error';
+            status.textContent=exclusive?'暂无符合条件的空房可用于整间独住。':'暂无符合条件的可入住房间，请调整搜索或筛选条件。';
+            roomSelect.innerHTML='<option value="">暂无可入住房间</option>';
+            return;
+        }
+        roomSelect.innerHTML='<option value="">请选择具体房间</option>'+available.map(function(room){
+            var occupied=Number(room.occupiedCount||0);
+            var capacity=Number(room.capacity||0);
+            var occupancy=occupied===0?'空房':'已住'+occupied+'人';
+            var airLabel=room.hasAirConditioner?'空调':'非空调';
+            var typeLabel={SINGLE:'单人间',DOUBLE:'双人间',TRIPLE:'三人间',QUAD:'四人间'}[room.roomType]||room.roomType;
+            return '<option value="'+Number(room.id)+'">'+campEsc(room.roomNumber)+'房 · '+typeLabel+' · '+airLabel+' · '+occupancy+' · 剩余'+Number(room.availableCount||0)+'/'+capacity+'床</option>';
+        }).join('');
+        if (available.some(function(room){return String(room.id)===previousRoom;})) roomSelect.value=previousRoom;
+        roomSelect.disabled=false;
+        status.className='camp-stay-status full is-ready';
+        status.textContent='有 '+available.length+' 间房可选、共 '+beds+' 个空余床位'+(exclusive?'；均为当前空房，入住后整间锁定。':'。');
+    } catch(e) {
+        if (requestId!==accommodationAvailabilityRequest) return;
+        status.className='camp-stay-status full is-error';
+        status.textContent='暂时无法读取住宿房间：'+e.message;
+        roomSelect.innerHTML='<option value="">房间读取失败，请重试</option>';
+    }
+}
+
+async function loadCampData() {
+    var resp=await fetch('/api/users?status=all&include_face=0');
+    var data=await resp.json();
+    campUsers=data.users || [];
+    campCoaches=data.coaches || [];
+    var active=campUsers.filter(function(u){return (u.camp_status || 'active') === 'active';});
+    var pending=campUsers.filter(function(u){return u.camp_status === 'pending';});
+    var exited=campUsers.filter(function(u){return u.camp_status === 'exited';});
+    document.getElementById('activeCount').textContent=active.length;
+    document.getElementById('pendingCount').textContent=pending.length;
+    document.getElementById('exitedCount').textContent=exited.length;
+    document.getElementById('todayEnterCount').textContent=active.filter(function(u){return userEnrollDate(u)===todayStr();}).length;
+    document.getElementById('todayExitCount').textContent=campUsers.filter(function(u){return (u.periods||[]).some(function(p){return p.status==='completed' && (p.exit_date||'').slice(0,10)===todayStr();});}).length;
+    var coachSelect=document.getElementById('entryCoach');
+    coachSelect.innerHTML='<option value="">请选择责任教练</option>'+campCoaches.map(function(c){return '<option value="'+c.id+'">'+campEsc(c.name)+'</option>';}).join('');
+    document.getElementById('nextEntryCoach').innerHTML=coachSelect.innerHTML;
+    filterCampLists();
+    var params=new URLSearchParams(location.search);
+    var exitId=parseInt(params.get('exit')||'0');
+    if (exitId) {
+        var target=active.find(function(u){return u.id===exitId;});
+        if (target) openExitModal(target.id,target.name);
+    }
+    var nextId=parseInt(params.get('enter_next')||'0');
+    if (nextId) {
+        var nextTarget=pending.find(function(u){return u.id===nextId;});
+        if (nextTarget) openNextEntryModal(nextTarget.id);
+    }
+}
+
+function filterCampLists() {
+    var input=document.getElementById('campSearch');
+    var keyword=(input ? input.value : '').trim().toLowerCase();
+    var active=campUsers.filter(function(u){return (u.camp_status || 'active') === 'active';});
+    var pending=campUsers.filter(function(u){return u.camp_status === 'pending';});
+    var exited=campUsers.filter(function(u){return u.camp_status === 'exited';});
+    function matches(u) {
+        if (!keyword) return true;
+        var summary=u.period_summary||{};
+        var searchable=[u.name,u.coach_name,userEnrollDate(u),u.exit_date,u.exit_note,'报名'+(u.period_count||1)+'期','第'+(summary.current_period_number||1)+'期',u.period_count];
+        return searchable.some(function(value){return String(value==null?'':value).toLowerCase().indexOf(keyword)!==-1;});
+    }
+    var shownActive=active.filter(matches);
+    var shownPending=pending.filter(matches);
+    var shownExited=exited.filter(matches);
+    document.getElementById('activeBadge').textContent=(keyword ? shownActive.length+'/'+active.length : active.length)+'人';
+    document.getElementById('pendingBadge').textContent=(keyword ? shownPending.length+'/'+pending.length : pending.length)+'人';
+    document.getElementById('exitedBadge').textContent=(keyword ? shownExited.length+'/'+exited.length : exited.length)+'人';
+    renderActive(shownActive, !!keyword);
+    renderPending(shownPending, !!keyword);
+    renderExited(shownExited, !!keyword);
+}
+
+function clearCampSearch() {
+    var input=document.getElementById('campSearch');
+    input.value='';
+    input.focus();
+    filterCampLists();
+}
+
+function renderActive(users, searching) {
+    var tbody=document.getElementById('activeBody');
+    if (!users.length) { tbody.innerHTML='<tr><td colspan="7" class="camp-empty">'+(searching?'没有找到匹配的在营学员':'暂无在营学员')+'</td></tr>'; return; }
+    tbody.innerHTML=users.map(function(u){
+        var s=u.period_summary||{};
+        return '<tr><td><strong>'+campEsc(u.name)+'</strong><br><span class="camp-status active">在营</span></td>'+
+            '<td>'+campEsc(userEnrollDate(u))+'</td><td>第'+(s.current_period_number||1)+'/'+(s.registered_periods||u.period_count||1)+'期<br><small>已完成'+(s.completed_periods||0)+'期</small></td><td>'+campEsc(u.coach_name||'--')+'</td>'+
+            '<td>'+(parseFloat(u.tice_weight)||0).toFixed(1)+'斤</td><td>'+(u.latest_weight==null?'--':parseFloat(u.latest_weight).toFixed(1)+'斤')+'</td>'+
+            '<td><div class="camp-action-row"><button class="btn btn-sm btn-primary" onclick="openExitModal('+u.id+',\''+campEsc(u.name).replace(/'/g,"\\'")+'\')">办理出营</button></div></td></tr>';
+    }).join('');
+}
+
+function renderPending(users, searching) {
+    var tbody=document.getElementById('pendingBody');
+    if (!users.length) { tbody.innerHTML='<tr><td colspan="6" class="camp-empty">'+(searching?'没有找到匹配的待入营学员':'暂无等待下一期入营的学员')+'</td></tr>'; return; }
+    tbody.innerHTML=users.map(function(u){
+        var s=u.period_summary||{};
+        return '<tr><td><strong>'+campEsc(u.name)+'</strong><br><span class="camp-status">待下一期</span></td>'+
+            '<td>报名'+(s.registered_periods||u.period_count||1)+'期 · 已完成'+(s.completed_periods||0)+'期</td>'+
+            '<td>'+campEsc(u.exit_date||'--')+'</td><td>第'+(s.next_period_number||s.current_period_number||'--')+'期</td>'+
+            '<td>'+(u.latest_weight==null?'--':parseFloat(u.latest_weight).toFixed(1)+'斤')+'</td>'+
+            '<td><button class="btn btn-sm btn-primary" onclick="openNextEntryModal('+u.id+')">办理下一期入营</button></td></tr>';
+    }).join('');
+}
+
+function renderExited(users, searching) {
+    var tbody=document.getElementById('exitedBody');
+    if (!users.length) { tbody.innerHTML='<tr><td colspan="7" class="camp-empty">'+(searching?'没有找到匹配的已出营档案':'暂无已出营档案')+'</td></tr>'; return; }
+    tbody.innerHTML=users.map(function(u){
+        return '<tr><td><strong>'+campEsc(u.name)+'</strong><br><span class="camp-status exited">已出营</span></td>'+
+            '<td>'+campEsc(userEnrollDate(u))+'</td><td>'+campEsc(u.exit_date||'--')+'</td><td>'+campEsc(u.coach_name||'--')+'</td>'+
+            '<td>'+(u.latest_weight==null?'--':parseFloat(u.latest_weight).toFixed(1)+'斤')+'</td><td class="camp-exit-note">'+campEsc(u.exit_note||'--')+'</td>'+
+            '<td><div class="camp-action-row"><a class="btn btn-sm btn-secondary" href="/data-table?status=exited&q='+encodeURIComponent(u.name)+'">查看档案</a><button class="btn btn-sm btn-secondary" onclick="restoreUser('+u.id+',\''+campEsc(u.name).replace(/'/g,"\\'")+'\')">恢复在营</button></div></td></tr>';
+    }).join('');
+}
+
+async function submitEntry(event) {
+    event.preventDefault();
+    var btn=document.getElementById('entrySubmit');
+    var body={
+        name:document.getElementById('entryName').value.trim(),
+        phone:document.getElementById('entryHeight').value,
+        initial_weight:document.getElementById('entryInitialWeight').value,
+        tice_weight:document.getElementById('entryTiceWeight').value,
+        enroll_date:document.getElementById('entryDate').value,
+        period_count:document.getElementById('entryPeriod').value,
+        coach_id:document.getElementById('entryCoach').value,
+        note:document.getElementById('entryNote').value.trim()
+    };
+    var arrangeStay=document.getElementById('entryArrangeStay').checked;
+    if (arrangeStay) {
+        var stayAir=document.getElementById('entryStayAir').value;
+        var stayType=document.getElementById('entryStayType').value;
+        var stayRoom=document.getElementById('entryStayRoom').value;
+        if (!stayRoom) { alert('❌ 请选择具体入住房间'); return; }
+        body.accommodation={
+            enabled:true,
+            room_id:Number(stayRoom),
+            exclusive_use:document.getElementById('entryStayExclusive').checked,
+            contact_phone:document.getElementById('entryStayPhone').value.trim()
+        };
+        if (stayAir!=='') body.accommodation.has_air_conditioner=stayAir==='true';
+        if (stayType) body.accommodation.room_type=stayType;
+    }
+    if (entryFaceImage) body.face_image=entryFaceImage;
+    btn.disabled=true; btn.textContent=arrangeStay?'正在建档并办理入住...':'正在建档...';
+    try {
+        var resp=await fetch('/api/camp/enter',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+        var result=await resp.json();
+        if (!resp.ok) throw new Error(result.error||'建档失败');
+        var messages=['✅ 入营建档完成'];
+        if (result.accommodation) {
+            messages.push('🏠 已安排：'+result.accommodation.room_number+' 房 · '+result.accommodation.bed_number+' 号床');
+            messages.push((result.accommodation.has_air_conditioner?'空调':'非空调')+' · '+result.accommodation.room_type_label);
+            if (result.accommodation.exclusive_use) messages.push('🔒 已设置整间独住，退宿前该房间保持满房');
+        }
+        if (result.face_warning) messages.push('⚠️ '+result.face_warning);
+        alert(messages.join('\n'));
+        document.getElementById('entryForm').reset();
+        document.getElementById('entryDate').value=todayStr();
+        document.getElementById('entryPeriod').value='1';
+        toggleAccommodationFields();
+        resetEntryFace();
+        await loadCampData();
+    } catch(e) { alert('❌ '+e.message); }
+    finally { btn.disabled=false; btn.textContent='确认入营并完成建档'; }
+}
+
+function openExitModal(id,name) {
+    document.getElementById('exitUserId').value=id;
+    document.getElementById('exitUserName').textContent=name;
+    document.getElementById('exitDate').value=todayStr();
+    document.getElementById('exitNote').value='';
+    document.getElementById('exitModal').style.display='flex';
+}
+function closeExitModal() { document.getElementById('exitModal').style.display='none'; }
+async function confirmExit() {
+    var id=document.getElementById('exitUserId').value;
+    var date=document.getElementById('exitDate').value;
+    if (!date) { alert('请选择出营日期'); return; }
+    var resp=await fetch('/api/camp/'+id+'/exit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({exit_date:date,exit_note:document.getElementById('exitNote').value.trim()})});
+    var result=await resp.json();
+    if (!resp.ok) { alert('❌ '+(result.error||'办理失败')); return; }
+    closeExitModal();
+    history.replaceState(null,'','/camp-management');
+    await loadCampData();
+    if (result.next_period_number) {
+        alert('✅ 当前第'+result.completed_period_number+'期已完成\n学员已进入“待下一期入营”，下一期为第'+result.next_period_number+'期');
+    } else {
+        alert('✅ 当前期已完成，全部报名期数均已完成');
+    }
+}
+
+function openNextEntryModal(id) {
+    var user=campUsers.find(function(u){return u.id===Number(id);});
+    if (!user) return;
+    var s=user.period_summary||{};
+    document.getElementById('nextEntryUserId').value=user.id;
+    document.getElementById('nextEntryUserName').textContent=user.name;
+    document.getElementById('nextEntryProgress').textContent='报名'+(s.registered_periods||user.period_count||1)+'期 · 已完成'+(s.completed_periods||0)+'期 · 本次办理第'+(s.next_period_number||s.current_period_number||'--')+'期';
+    var nextPeriod=(user.periods||[]).find(function(p){return Number(p.period_number)===Number(s.next_period_number);});
+    document.getElementById('nextEntryDate').value=(nextPeriod&&nextPeriod.enroll_date)||todayStr();
+    var latest=parseFloat(user.latest_weight)||parseFloat(user.initial_weight)||0;
+    document.getElementById('nextEntryInitial').value=latest ? latest.toFixed(1) : '';
+    document.getElementById('nextEntryTice').value=latest ? latest.toFixed(1) : '';
+    document.getElementById('nextEntryCoach').value=user.coach_id||'';
+    document.getElementById('nextEntryModal').style.display='flex';
+}
+function closeNextEntryModal() {
+    document.getElementById('nextEntryModal').style.display='none';
+    var params=new URLSearchParams(location.search);
+    if (params.has('enter_next')) {
+        params.delete('enter_next');
+        history.replaceState(null,'',location.pathname+(params.toString()?'?'+params.toString():''));
+    }
+}
+async function confirmNextEntry() {
+    var id=Number(document.getElementById('nextEntryUserId').value);
+    var body={
+        enroll_date:document.getElementById('nextEntryDate').value,
+        coach_id:document.getElementById('nextEntryCoach').value,
+        initial_weight:document.getElementById('nextEntryInitial').value,
+        tice_weight:document.getElementById('nextEntryTice').value
+    };
+    if (!body.enroll_date || !body.coach_id || !body.initial_weight || !body.tice_weight) { alert('请完整填写本期入营信息'); return; }
+    var resp=await fetch('/api/camp/'+id+'/enter-next',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    var result=await resp.json();
+    if (!resp.ok) { alert('❌ '+(result.error||'办理失败')); return; }
+    closeNextEntryModal();
+    await loadCampData();
+    alert('✅ 第'+result.period_number+'期入营办理完成');
+}
+async function restoreUser(id,name) {
+    if (!confirm('确定将“'+name+'”恢复为在营学员吗？')) return;
+    var resp=await fetch('/api/camp/'+id+'/restore',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+    var result=await resp.json();
+    if (!resp.ok) { alert('❌ '+(result.error||'恢复失败')); return; }
+    await loadCampData();
+}
+
+async function startEntryCamera() {
+    resetEntryFace();
+    try {
+        entryStream=await navigator.mediaDevices.getUserMedia({video:{width:640,height:480,facingMode:'user'}});
+        var video=document.getElementById('entryVideo');
+        video.style.display='block'; video.srcObject=entryStream; await video.play();
+        document.getElementById('entryFaceStatus').textContent='请将人脸对准摄像头，系统自动扫描';
+        entryScanTimer=setInterval(scanEntryFace,1000);
+    } catch(e) { document.getElementById('entryFaceStatus').textContent='摄像头打开失败：'+e.message; }
+}
+async function scanEntryFace() {
+    var video=document.getElementById('entryVideo');
+    if (!video.videoWidth || entryFaceImage) return;
+    var canvas=document.getElementById('entryCanvas');
+    canvas.width=video.videoWidth; canvas.height=video.videoHeight;
+    canvas.getContext('2d').drawImage(video,0,0);
+    var image=canvas.toDataURL('image/jpeg',.78);
+    try {
+        var resp=await fetch('/api/face/detect',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:image})});
+        var data=await resp.json();
+        var liveOk=!data.liveness_enabled || (data.liveness && data.liveness[0] && data.liveness[0].is_live);
+        if (data.count>0 && liveOk) entryFaceHits++; else entryFaceHits=0;
+        document.getElementById('entryFaceStatus').textContent=data.count>0 ? (liveOk?'人脸检测中 '+entryFaceHits+'/2':'活体检测未通过，请使用真实人脸') : '未检测到人脸，请调整位置';
+        if (entryFaceHits>=2) {
+            entryFaceImage=image;
+            stopEntryCamera();
+            document.getElementById('entryFaceStatus').textContent='✅ 人脸采集完成';
+            document.getElementById('entryFacePreview').innerHTML='<img src="'+image+'" alt="已采集人脸">';
+        }
+    } catch(e) {}
+}
+function stopEntryCamera() {
+    if (entryScanTimer) { clearInterval(entryScanTimer); entryScanTimer=null; }
+    if (entryStream) { entryStream.getTracks().forEach(function(t){t.stop();}); entryStream=null; }
+    document.getElementById('entryVideo').style.display='none';
+}
+function resetEntryFace() {
+    stopEntryCamera(); entryFaceImage=''; entryFaceHits=0;
+    document.getElementById('entryFacePreview').innerHTML='';
+    document.getElementById('entryFaceStatus').textContent='建议入营时完成人脸录入；暂时无法拍摄时也可先建档，之后补录。';
+}
+
+document.addEventListener('DOMContentLoaded',function(){ document.getElementById('entryDate').value=todayStr(); loadCampData(); });
+window.addEventListener('beforeunload',stopEntryCamera);
+</script>
+{% endblock %}

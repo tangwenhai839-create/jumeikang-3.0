@@ -2,9 +2,17 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#1a6e69">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="聚美康管理端">
     <title>管理员登录 - 体重管理系统</title>
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/pwa/apple-touch-icon.png?v=20260825-1">
     <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/luxury-theme.css?v=20260820-mobile1">
+    <link rel="stylesheet" href="/static/css/mobile.css?v=20260820-mobile1">
     <style>
         .login-wrapper {
             min-height: 100vh;
@@ -128,21 +136,54 @@
         .status-dot.running { background: #52c41a; }
         .status-dot.error { background: #e74c3c; }
         .status-dot.success { background: #1890ff; }
+        @media (max-width: 600px) {
+            .login-wrapper {
+                min-height: 100svh;
+                padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+                align-items: center;
+            }
+            .login-box { max-width: none; padding: 26px 18px; border-radius: 18px; }
+            .login-brand { margin-bottom: 24px; }
+            .login-brand h1 { font-size: 21px; }
+            .login-form input, .login-form button { min-height: 48px; font-size: 16px; }
+            .face-login-box video { max-height: 46svh; object-fit: cover; }
+            .login-tip { font-size: 12px; line-height: 1.65; }
+        }
+        .pwa-install-tip {
+            margin-top: 12px;
+            padding: 12px;
+            border-radius: 10px;
+            background: #eef7f5;
+            border: 1px solid #b9d9d4;
+            color: #315f5b;
+            font-size: 13px;
+            line-height: 1.65;
+            text-align: center;
+        }
+        .pwa-install-tip button {
+            margin-top: 8px;
+            padding: 8px 14px;
+            border: 0;
+            border-radius: 8px;
+            background: #1a6e69;
+            color: #fff;
+            font-weight: 700;
+        }
     </style>
 </head>
-<body>
+<body class="luxury-theme h-theme admin-login">
     <div class="login-wrapper">
         <div class="login-box">
             <div class="login-brand">
-                <div style="font-size: 48px;">⚙️</div>
-                <h1>体重管理后台</h1>
-                <p>管理员登录</p>
+                <img class="login-brand-mark brand-logo" src="/static/images/jmk-logo.svg?v=20260820-1" alt="JMK">
+                <h1>聚美康管理中心</h1>
+                <p>JUMEIKANG · INTELLIGENT HEALTH</p>
             </div>
             <div id="passwordLogin">
                 <form class="login-form" onsubmit="return doLogin(event)">
                     <div class="form-group">
                         <label>账号</label>
-                        <input type="text" id="username" placeholder="请输入管理员账号" autocomplete="username" required>
+                        <input type="text" id="username" placeholder="请输入教练账号" autocomplete="username" required>
                     </div>
                     <div class="form-group">
                         <label>密码</label>
@@ -170,12 +211,18 @@
             </div>
 
             <div class="login-tip">
-                首次登录默认账号：admin / admin123<br>
-                教练可录入人脸后使用人脸登录，学员人脸不能登录后台
+                每名教练使用自己的独立账号或本人人脸登录<br>
+                学员人脸不能登录管理后台
+            </div>
+            <div class="pwa-install-tip" id="pwaInstallTip" style="display:none">
+                <strong>安装“聚美康管理端”到手机桌面</strong><br>
+                iPhone 请使用 Safari 打开，点击底部“分享”，再选“添加到主屏幕”。
+                <br><button type="button" onclick="showPWAInstallGuide()">查看安装方法</button>
             </div>
         </div>
     </div>
 
+    <script src="/static/pwa/pwa.js?v=20260825-1"></script>
     <script>
         let faceStream = null;
         let isFaceMode = false;

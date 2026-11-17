@@ -307,7 +307,7 @@ function setStabilityStatus(status, value) {
     } else if (status === 'stable') {
         ind.classList.add('stable');
         bar.style.width = '100%';
-        txt.textContent = '已稳定! ' + (value ? value.toFixed(2) : '') + ' kg';
+        txt.textContent = '已稳定! ' + (value ? value.toFixed(2) : '') + ' 斤';
     } else if (status === 'unstable') {
         ind.classList.add('unstable');
         bar.style.width = '100%';
@@ -337,7 +337,7 @@ async function autoSaveWeight(weight) {
                 body: JSON.stringify({ user_id: window.currentUserId, weight: weight })
             });
             if (overwrite.ok) {
-                speak('体重已稳定，' + weight + '公斤，自动保存成功。');
+                speak('体重已稳定，' + weight + '斤，自动保存成功。');
                 speak(userName + '今日已称重，数据已覆盖。');
                 updateScaleUI('saved');
                 setTimeout(resetScaleAfterSave, 3000);
@@ -345,7 +345,7 @@ async function autoSaveWeight(weight) {
             return;
         }
         if (resp.ok) {
-            speak('体重已稳定，' + weight + '公斤，自动保存成功。');
+            speak('体重已稳定，' + weight + '斤，自动保存成功。');
             updateScaleUI('saved');
             setTimeout(resetScaleAfterSave, 3000);
         }
